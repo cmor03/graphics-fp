@@ -1,0 +1,901 @@
+#include "A4Engine.h"
+
+#include <CSCI441/objects.hpp>
+
+#include <cmath>
+
+#include <glm/gtc/constants.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+//*************************************************************************************
+//
+// Helper Functions
+
+static const GLfloat GLM_PI = glm::pi<float>();
+static const GLfloat GLM_2PI = glm::two_pi<float>();
+
+//*************************************************************************************
+//
+// Public Interface
+
+A4Engine::A4Engine()
+     : CSCI441::OpenGLEngine(4, 1, 720, 720, "A4") {
+
+    for(auto& _key : _keys) _key = GL_FALSE;
+
+    _mousePosition = glm::vec2(MOUSE_UNINITIALIZED, MOUSE_UNINITIALIZED );
+    _leftMouseButtonState = GLFW_RELEASE;
+    _direction[0] = 0;
+    _direction[1] = 0;
+    _pos[0] = glm::vec2(0,0);
+    _pos[1] = glm::vec2(5,5);
+    _currentVehicle = 0;
+    freeCam = false;
+    _playerRadius = 0.5f;
+}
+GLfloat getRand() {
+    return (GLfloat)rand() / (GLfloat)RAND_MAX;
+}
+
+void A4Engine::handleKeyEvent(GLint key, GLint action) {
+    if(key != GLFW_KEY_UNKNOWN)
+        _keys[key] = ((action == GLFW_PRESS) || (action == GLFW_REPEAT));
+
+    if(action == GLFW_PRESS) {
+        switch( key ) {
+            // quit!
+            case GLFW_KEY_Q:
+            case GLFW_KEY_ESCAPE:
+                setWindowShouldClose();
+                break;
+            default: break;
+        }
+    }
+}
+
+void A4Engine::handleMouseButtonEvent(GLint button, GLint action) {
+
+    if( button == GLFW_MOUSE_BUTTON_LEFT ) {
+        _leftMouseButtonState = action;
+    }
+}
+
+void A4Engine::handleCursorPositionEvent(glm::vec2 currMousePosition) {
+    // if mouse hasn't moved in the window, prevent camera from flipping out
+    if(fabs(_mousePosition.x - MOUSE_UNINITIALIZED) <= 0.000001f) {
+        _mousePosition = currMousePosition;
+    }
+
+    // active motion - if the left mouse button is being held down while the mouse is moving
+    if(_leftMouseButtonState == GLFW_PRESS) {
+        glm::vec2 lastMousePosition = _mousePosition;
+        GLfloat dTheta = (currMousePosition.x - lastMousePosition.x) * 0.005;
+        GLfloat dPhi = (lastMousePosition.y - currMousePosition.y) * 0.005;
+        // rotate the camera by the distance the mouse moved
+        if(freeCam){
+            _pFreeCam->rotate(dTheta,dPhi);
+        }
+        else{
+            _pArcBall->rotate( dTheta,dPhi );
+        }
+        // update the last mouse position
+        _mousePosition = currMousePosition;
+    }
+    // passive motion
+    else {
+
+    }
+
+    // update the mouse position
+    _mousePosition = currMousePosition;
+}
+
+void A4Engine::handleScrollEvent(glm::vec2 offset) {
+    if(!freeCam) {
+        _pArcBall->moveForward(offset.y);
+        glm::vec3 pos = _pArcBall->getPosition();
+    }
+}
+
+//*************************************************************************************
+//
+// Engine Setup
+
+void A4Engine::mSetupGLFW() {
+    CSCI441::OpenGLEngine::mSetupGLFW();
+
+    // Update callback references from mp_ to a4_
+    glfwSetKeyCallback(mpWindow, a4_keyboard_callback);
+    glfwSetMouseButtonCallback(mpWindow, a4_mouse_button_callback);
+    glfwSetCursorPosCallback(mpWindow, a4_cursor_callback);
+    glfwSetScrollCallback(mpWindow, a4_scroll_callback);
+}
+
+void A4Engine::mSetupOpenGL() {
+    glEnable( GL_DEPTH_TEST );					                    // enable depth testing
+    glDepthFunc( GL_LESS );							                // use less than depth test
+
+    glEnable(GL_BLEND);									            // enable blending
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	            // use one minus blending equation
+
+    glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	// clear the frame buffer to black
+    
+}
+
+void A4Engine::mSetupShaders() {
+    _shaderProgram = new CSCI441::ShaderProgram("shaders/mp.v.glsl", "shaders/mp.f.glsl" );
+    // query uniform locations
+    _shaderUniformLocations.mvpMatrix      = _shaderProgram->getUniformLocation("mvpMatrix");
+    _shaderUniformLocations.lightDirection      = _shaderProgram->getUniformLocation("lightDirection");
+    _shaderUniformLocations.directionalLightColor      = _shaderProgram->getUniformLocation("directionalLightColor");
+    _shaderUniformLocations.pointLightPosition      = _shaderProgram->getUniformLocation("pointLightPosition");
+    _shaderUniformLocations.pointLightColor      = _shaderProgram->getUniformLocation("pointLightColor");
+    _shaderUniformLocations.materialColor      = _shaderProgram->getUniformLocation("materialColor");
+    _shaderUniformLocations.normalMatrix      = _shaderProgram->getUniformLocation("normalMatrix");
+    _shaderUniformLocations.viewVector      = _shaderProgram->getUniformLocation("viewVector");
+    _shaderUniformLocations.textureMap      = _shaderProgram->getUniformLocation("textureMap");
+    _shaderAttributeLocations.vPos         = _shaderProgram->getAttributeLocation("vPos");
+    _shaderAttributeLocations.normalVec      = _shaderProgram->getAttributeLocation("normalVec");
+    _shaderAttributeLocations.inTexCoord      = _shaderProgram->getAttributeLocation("inTexCoord");
+
+    _shaderProgram->setProgramUniform("textureMap", 0);
+
+
+    CSCI441::setVertexAttributeLocations(_shaderAttributeLocations.vPos,
+                                         _shaderAttributeLocations.normalVec,
+                                         _shaderAttributeLocations.inTexCoord);
+}
+
+void A4Engine::mSetupBuffers() {
+    glGenVertexArrays( NUM_VAOS, _vaos );
+    glGenBuffers( NUM_VAOS, _vbos );
+    glGenBuffers( NUM_VAOS, _ibos );
+
+    _createPlatform(_vaos[VAO_ID::PLATFORM], _vbos[VAO_ID::PLATFORM], _ibos[VAO_ID::PLATFORM], _numVAOPoints[VAO_ID::PLATFORM]);
+    _generateEnvironment();
+    _createQuad(_vaos[VAO_ID::QUAD], _vbos[VAO_ID::QUAD], _ibos[VAO_ID::QUAD], _numVAOPoints[VAO_ID::QUAD]);
+
+    _pColtonPlane = new Plane(_shaderProgram->getShaderProgramHandle(),
+                            _shaderUniformLocations.mvpMatrix,
+                            _shaderUniformLocations.normalMatrix,
+                            _shaderUniformLocations.materialColor);
+}
+
+void A4Engine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
+    struct VertexNormalTextured {
+        glm::vec3 position;
+        glm::vec3 normal;
+        glm::vec2 texCoord;
+    };
+
+    // create our platform
+    VertexNormalTextured platformVertices[4] = {
+            { { -WORLD_SIZE, 1.0f, -WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
+            { {  WORLD_SIZE, 1.0f, -WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
+            { { -WORLD_SIZE, 1.0f,  WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
+            { {  WORLD_SIZE, 1.0f,  WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
+    };
+
+    GLushort platformIndices[4] = { 0, 1, 2, 3 };
+    numVAOPoints = 4;
+
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData( GL_ARRAY_BUFFER, sizeof( platformVertices ), platformVertices, GL_STATIC_DRAW );
+
+    glEnableVertexAttribArray( _shaderAttributeLocations.vPos );
+    glVertexAttribPointer( _shaderAttributeLocations.vPos, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)nullptr );
+
+    glEnableVertexAttribArray( _shaderAttributeLocations.normalVec );
+    glVertexAttribPointer( _shaderAttributeLocations.normalVec, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(sizeof(glm::vec3)) );
+
+    glEnableVertexAttribArray(_shaderAttributeLocations.inTexCoord);
+    glVertexAttribPointer( _shaderAttributeLocations.inTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(sizeof(glm::vec3)*2) );
+
+
+
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( platformIndices ), platformIndices, GL_STATIC_DRAW );
+
+    fprintf( stdout, "[INFO]: platform read in with VAO/VBO/IBO %d/%d/%d & %d points\n", vao, vbo, ibo, numVAOPoints );
+}
+
+void A4Engine::_createQuad(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
+
+   struct VertexNormalTextured {
+       glm::vec3 position;
+       glm::vec3 normal;
+       glm::vec2 texCoord;
+   };
+
+   VertexNormalTextured quadVertices[4] = {
+           { { -2.5f, -2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
+           { {  2.5f, -2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 3.0f, 0.0f } }, // 1 - BR
+           { { -2.5f,  2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 3.0f } }, // 2 - TL
+           { {  2.5f,  2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 3.0f, 3.0f } }  // 3 - TR
+   };
+
+   GLushort quadIndices[4] = { 0, 1, 2, 3 };
+   numVAOPoints = 4;
+
+   glBindVertexArray( vao );
+
+   glBindBuffer( GL_ARRAY_BUFFER, vbo );
+   glBufferData( GL_ARRAY_BUFFER, sizeof( quadVertices ), quadVertices, GL_STATIC_DRAW );
+
+   glEnableVertexAttribArray( _shaderAttributeLocations.vPos );
+   glVertexAttribPointer( _shaderAttributeLocations.vPos, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)nullptr );
+
+   glEnableVertexAttribArray( _shaderAttributeLocations.normalVec);
+   glVertexAttribPointer( _shaderAttributeLocations.normalVec, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(sizeof(glm::vec3)) );
+
+   glEnableVertexAttribArray( _shaderAttributeLocations.inTexCoord );
+   glVertexAttribPointer( _shaderAttributeLocations.inTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(2*sizeof(glm::vec3)) );
+
+   glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo );
+   glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( quadIndices ), quadIndices, GL_STATIC_DRAW );
+
+   fprintf( stdout, "[INFO]: quad read in with VAO/VBO/IBO %d/%d/%d & %d points\n", vao, vbo, ibo, numVAOPoints );
+}
+
+void A4Engine::mSetupTextures() {
+    _texHandles[TEXTURE_ID::GROUND] = _loadAndRegisterTexture("assets/textures/ground.png");
+    _texHandles[TEXTURE_ID::TREE] = _loadAndRegisterTexture("assets/textures/tree.png");
+    _texHandles[TEXTURE_ID::BUILDING] = _loadAndRegisterTexture("assets/textures/building.png");
+    _texHandles[TEXTURE_ID::LEAVES] = _loadAndRegisterTexture("assets/textures/leaves.png");
+
+    _skyTexture = _loadAndRegisterTexture("assets/textures/skybox.png");
+    fprintf(stdout, "[INFO]: Skybox texture handle: %d\n", _skyTexture);
+}
+
+void A4Engine::mSetupScene() {
+    _pArcBall = new ArcBall();
+    _pArcBall->setRadius(20.0f);
+    _pArcBall->setTheta(0.0f);
+    _pArcBall->setPhi(M_PI/1.5f);
+    _pArcBall->recomputeOrientation();
+
+    _pFreeCam = new CSCI441::FreeCam();
+    _pFreeCam->setPosition(glm::vec3(10.0f, 10.0f, 10.0f) );
+    _pFreeCam->setTheta(5.52f );
+    _pFreeCam->setPhi(0.9f );
+    _pFreeCam->recomputeOrientation();
+    _cameraSpeed = glm::vec2(0.25f, 0.02f);
+
+    _objectIndex = 0;
+    _objectAngle = 0.0f;
+
+    glm::vec3 directionalLightColor = glm::vec3(0.2f, 0.2f, 0.2f);
+    glm::vec3 lightDirection = glm::vec3(-1,-1,-1);
+    glm::vec3 viewVector = _pArcBall->getPosition();
+    
+    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
+        _shaderUniformLocations.directionalLightColor,
+        1,
+        glm::value_ptr(directionalLightColor));
+
+    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
+        _shaderUniformLocations.lightDirection,
+        1,
+        glm::value_ptr(lightDirection));
+        
+    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
+        _shaderUniformLocations.viewVector,
+        1,
+        glm::value_ptr(viewVector));
+
+    _setupSkybox();
+
+    _ghostManager = new GhostManager(_shaderProgram->getShaderProgramHandle(),
+                                   _shaderUniformLocations.mvpMatrix,
+                                   _shaderUniformLocations.normalMatrix,
+                                   _shaderUniformLocations.materialColor);
+    
+    _ghostManager->setMaxGhosts(30);
+    _ghostManager->setSpawnRadius(40.0f);
+    _ghostManager->setSpawnInterval(3.0f);
+    _ghostManager->setDensity(0.3f); 
+    
+    Ghost::setMovementSpeed(3.0f);
+    Ghost::setGhostSize(1.0f); 
+    Ghost::setGhostColor(glm::vec3(1.0f, 1.0f, 1.0f));
+    Ghost::setFadeDistance(30.0f);
+
+    _particleSystem = new ParticleSystem(_shaderProgram->getShaderProgramHandle(),
+                                       _shaderUniformLocations.mvpMatrix,
+                                       _shaderUniformLocations.materialColor);
+}
+
+//*************************************************************************************
+//
+// Engine Cleanup
+
+void A4Engine::mCleanupShaders() {
+    fprintf( stdout, "[INFO]: ...deleting Shaders.\n" );
+    delete _shaderProgram;
+}
+
+void A4Engine::mCleanupBuffers() {
+    fprintf( stdout, "[INFO]: ...deleting VAOs....\n" );
+    CSCI441::deleteObjectVAOs();
+    glDeleteVertexArrays( NUM_VAOS, _vaos );
+
+    fprintf( stdout, "[INFO]: ...deleting VBOs....\n" );
+    CSCI441::deleteObjectVBOs();
+    glDeleteBuffers( NUM_VAOS, _vbos );
+
+    fprintf( stdout, "[INFO]: ...deleting IBOs....\n" );
+    glDeleteBuffers( NUM_VAOS, _ibos );
+
+    fprintf( stdout, "[INFO]: ...deleting models..\n" );
+    delete _pObjModel;
+    delete _pHellknight;
+}
+
+void A4Engine::mCleanupTextures() {
+    fprintf( stdout, "[INFO]: ...deleting textures\n" );
+    // TODO #23 - delete textures
+    glDeleteTextures(4, _texHandles);
+
+}
+
+void A4Engine::mCleanupScene() {
+    fprintf(stdout, "[INFO]: ...deleting scene...\n");
+    delete _pArcBall;
+    delete _pColtonPlane;
+    
+    // Cleanup skybox resources
+    delete _skyboxShader;
+    glDeleteVertexArrays(1, &_skyboxVAO);
+    glDeleteBuffers(1, &_skyboxVBO);
+    glDeleteTextures(1, &_skyTexture);
+
+    delete _ghostManager;
+    delete _particleSystem;
+}
+void A4Engine::_generateEnvironment() {
+    // Clear any existing collision objects
+    CollisionDetector::clearCollisionObjects();
+    
+    //******************************************************************
+    // parameters to make up our grid size and spacing, feel free to
+    // play around with this
+    const GLfloat GRID_WIDTH = WORLD_SIZE * 1.8f;
+    const GLfloat GRID_LENGTH = WORLD_SIZE * 1.8f;
+    const GLfloat GRID_SPACING_WIDTH = 1.0f;
+    const GLfloat GRID_SPACING_LENGTH = 1.0f;
+    // precomputed parameters based on above
+    const GLfloat LEFT_END_POINT = -GRID_WIDTH / 2.0f - 5.0f;
+    const GLfloat RIGHT_END_POINT = GRID_WIDTH / 2.0f + 5.0f;
+    const GLfloat BOTTOM_END_POINT = -GRID_LENGTH / 2.0f - 5.0f;
+    const GLfloat TOP_END_POINT = GRID_LENGTH / 2.0f + 5.0f;
+    //******************************************************************
+
+    srand( time(0) );                                                   // seed our RNG
+
+    // psych! everything's on a grid.
+    for(int i = LEFT_END_POINT; i < RIGHT_END_POINT; i += GRID_SPACING_WIDTH) {
+        for(int j = BOTTOM_END_POINT; j < TOP_END_POINT; j += GRID_SPACING_LENGTH) {
+            // Reduce probability from 0.4f to 0.1f (75% reduction)
+            if( i % 2 && j % 2 && getRand() < 0.1f ) {
+                // translate to spot
+                glm::mat4 transToSpotMtx = glm::translate( glm::mat4(1.0), glm::vec3(i, 0.0f, j) );
+
+                // compute random height
+                GLdouble height = powf(getRand(), 2.5)*10 + 1;
+                // scale to building size
+                glm::mat4 scaleToHeightMtx = glm::scale( glm::mat4(1.0), glm::vec3(1, height, 1) );
+
+                // translate up to grid
+                glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, height/2.0f, 0) );
+
+                // compute full model matrix
+                glm::mat4 modelMatrix = transToHeight * scaleToHeightMtx * transToSpotMtx;
+
+                // compute random color
+                glm::vec3 color( getRand(), getRand(), getRand() );
+                // store building properties
+                BuildingData currentBuilding = {modelMatrix, color, height<3, height};
+                _buildings.emplace_back( currentBuilding );
+                
+                // Add collision object with much smaller radii
+                glm::vec3 position(i, 0.0f, j);
+                if(height < 3) {
+                    // Tree collision - reduced from 2.0f to 0.5f
+                    CollisionDetector::addCollisionObject(position, 0.5f, true);
+                } else {
+                    // Building collision - reduced from 1.5f to 0.75f
+                    CollisionDetector::addCollisionObject(position, 0.75f, false);
+                }
+            }
+        }
+    }
+}
+//*************************************************************************************
+//
+// Rendering / Drawing Functions - this is where the magic happens!
+
+void A4Engine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
+
+
+    // use our lighting shader program
+    _shaderProgram->useProgram();
+    glm::vec3 defaultColor = glm::vec3(-1,-1,-1);
+    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(), _shaderUniformLocations.materialColor, 1, glm::value_ptr(defaultColor));
+    glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.1f, 0.0f));
+    glm::mat4 mvpMtx = projMtx * viewMtx * modelMatrix;
+    _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+    glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
+    _shaderProgram->setProgramUniform(_shaderUniformLocations.normalMatrix, normalMatrix);
+
+    // TODO #20 - bind texture
+    glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::GROUND]);
+
+    glBindVertexArray( _vaos[VAO_ID::PLATFORM] );
+    glDrawElements( GL_TRIANGLE_STRIP, _numVAOPoints[VAO_ID::PLATFORM], GL_UNSIGNED_SHORT, (void*)nullptr );
+
+
+    for( const BuildingData& currentBuilding : _buildings ) {
+
+        if(currentBuilding.isTree){
+            glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::TREE]);
+            glm::mat4 pullTreesDown = glm::translate(glm::mat4(1),glm::vec3(0,currentBuilding.height*-0.08f-0.3f,0));
+            mvpMtx = projMtx * viewMtx * currentBuilding.modelMatrix*pullTreesDown;
+            _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+            CSCI441::drawSolidCylinder(0.5,0.5,1,8,8);
+            glm::mat4 treeTop = glm::translate(glm::mat4(1),glm::vec3(0,1,0));
+            glm::mat4 treeTopMtx = currentBuilding.modelMatrix*treeTop;
+            mvpMtx = projMtx * viewMtx * treeTopMtx*pullTreesDown;
+            _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+            glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::LEAVES]);
+            CSCI441::drawSolidCone(2,1,8,8);
+        }
+        else{
+            glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::BUILDING]);
+            mvpMtx = projMtx * viewMtx * currentBuilding.modelMatrix;
+            _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+            CSCI441::drawSolidCubeTextured(1.0);
+        }
+    }
+
+    modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.1f, 0.0f));
+    modelMatrix = glm::rotate( modelMatrix, _objectAngle, CSCI441::Y_AXIS );
+    mvpMtx = projMtx * viewMtx * modelMatrix;
+    _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+
+    // TODO #21 - bind texture
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if(_isExploding) {
+        _particleSystem->draw(viewMtx, projMtx);
+    } else {
+        modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, glm::vec3(_pos[_currentVehicle].x, _currentHeight, _pos[_currentVehicle].y));
+        modelMatrix = glm::rotate(modelMatrix, _direction[_currentVehicle], CSCI441::Y_AXIS);
+        _pColtonPlane->drawPlane(modelMatrix, viewMtx, projMtx);
+    }
+
+    _ghostManager->draw(viewMtx, projMtx);
+}
+
+void A4Engine::_updateScene() {
+    // Handle ghost collision explosion
+    if(GhostManager::hasCollided() && !_isExploding) {
+        _isExploding = true;
+        _particleSystem->spawn(glm::vec3(_pos[_currentVehicle].x, 
+                                        _currentHeight, 
+                                        _pos[_currentVehicle].y));
+        return;
+    }
+    
+    // Handle explosion animation and reset
+    if(_isExploding) {
+        _particleSystem->update(0.016f);
+        
+        if(!_particleSystem->isAlive()) {
+            // Reset everything after explosion
+            _isExploding = false;
+            _pos[_currentVehicle] = glm::vec2(_spawnPosition.x, _spawnPosition.z);
+            _direction[_currentVehicle] = 0.0f;
+            _currentHeight = _spawnPosition.y;
+            _ghostManager->reset();
+        }
+        return;
+    }
+
+    // Handle falling state
+    if(_isFalling) {
+        _currentHeight -= FALL_SPEED * 0.016f;
+        _fallTime += 0.016f;
+        
+        if(_fallTime >= MAX_FALL_TIME) {
+            // Reset everything
+            _isFalling = false;
+            _fallTime = 0.0f;
+            _pos[_currentVehicle] = glm::vec2(_spawnPosition.x, _spawnPosition.z);
+            _direction[_currentVehicle] = 0.0f;
+            _currentHeight = _spawnPosition.y;
+            _ghostManager->reset();
+            return;
+        }
+        return;  // Skip other updates while falling
+    }
+
+    // Check if we've gone off the map
+    if(_pos[_currentVehicle].x > WORLD_SIZE || 
+       _pos[_currentVehicle].x < -WORLD_SIZE || 
+       _pos[_currentVehicle].y > WORLD_SIZE || 
+       _pos[_currentVehicle].y < -WORLD_SIZE) {
+        _isFalling = true;
+        _fallTime = 0.0f;
+        return;
+    }
+
+    // Rest of update code (movement, ghosts, etc.)
+    if(_keys[GLFW_KEY_W]) {
+        if(freeCam){
+            _pFreeCam->moveForward(_cameraSpeed.x);
+        }
+        else{
+            // Calculate new position
+            glm::vec2 newPos = _pos[_currentVehicle];
+            newPos.x += 0.15f * glm::sin(_direction[_currentVehicle]);
+            newPos.y += 0.15f * glm::cos(_direction[_currentVehicle]);
+            
+            // Check for collisions
+            if(!_checkCollisions(newPos)) {
+                // No collision, update position
+                _pos[_currentVehicle] = newPos;
+                _lastValidPosition = newPos;
+                _pColtonPlane->moveForward();
+            } else {
+                // Collision detected, revert to last valid position
+                _pos[_currentVehicle] = _lastValidPosition;
+            }
+            
+            // Update camera position to follow behind plane
+            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
+            // Calculate camera offset based on plane's direction - now offset is in FRONT of plane
+            glm::vec3 offset = glm::vec3(
+                10.0f * glm::sin(_direction[_currentVehicle]), // Removed negative
+                5.0f,                                          // Height stays same
+                10.0f * glm::cos(_direction[_currentVehicle])  // Removed negative
+            );
+            
+            // Set camera position and look at point
+            _pArcBall->setPosition(planePos + offset);
+            _pArcBall->setLookAtPoint(planePos);
+            _pArcBall->setTheta(-_direction[_currentVehicle]); // Removed + pi
+            _pArcBall->recomputeOrientation();
+        }
+    }
+    if(_keys[GLFW_KEY_S]){
+        if(freeCam){
+            _pFreeCam->moveBackward(_cameraSpeed.x);
+        }
+        else{
+            glm::vec2 newPos = _pos[_currentVehicle];
+            newPos.x -= 0.15f * glm::sin(_direction[_currentVehicle]);
+            newPos.y -= 0.15f * glm::cos(_direction[_currentVehicle]);
+            
+            if(!_checkCollisions(newPos)) {
+                _pos[_currentVehicle] = newPos;
+                _lastValidPosition = newPos;
+                _pColtonPlane->moveBackward();
+            } else {
+                _pos[_currentVehicle] = _lastValidPosition;
+            }
+            
+            // Update camera position to follow behind plane
+            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
+            glm::vec3 offset = glm::vec3(
+                10.0f * glm::sin(_direction[_currentVehicle]),
+                5.0f,
+                10.0f * glm::cos(_direction[_currentVehicle])
+            );
+            
+            _pArcBall->setPosition(planePos + offset);
+            _pArcBall->setLookAtPoint(planePos);
+            _pArcBall->setTheta(-_direction[_currentVehicle]);
+            _pArcBall->recomputeOrientation();
+        }
+    }
+
+    //turn when A or D pressed
+    if(!freeCam){
+        if(_keys[GLFW_KEY_A]){
+            _direction[_currentVehicle] += 0.03f;
+            
+            // Update camera when turning
+            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
+            glm::vec3 offset = glm::vec3(
+                10.0f * glm::sin(_direction[_currentVehicle]),
+                5.0f,
+                10.0f * glm::cos(_direction[_currentVehicle])
+            );
+            
+            _pArcBall->setPosition(planePos + offset);
+            _pArcBall->setLookAtPoint(planePos);
+            _pArcBall->setTheta(-_direction[_currentVehicle]);
+            _pArcBall->recomputeOrientation();
+        }
+        if(_keys[GLFW_KEY_D]){
+            _direction[_currentVehicle] -= 0.03f;
+            
+            // Update camera when turning
+            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
+            glm::vec3 offset = glm::vec3(
+                10.0f * glm::sin(_direction[_currentVehicle]),
+                5.0f,
+                10.0f * glm::cos(_direction[_currentVehicle])
+            );
+            
+            _pArcBall->setPosition(planePos + offset);
+            _pArcBall->setLookAtPoint(planePos);
+            _pArcBall->setTheta(-_direction[_currentVehicle]);
+            _pArcBall->recomputeOrientation();
+        }
+    }
+
+    // Update point light position to be in front of and above the plane
+    glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
+    glm::vec3 lightOffset = glm::vec3(
+        -3.0f * glm::sin(_direction[_currentVehicle]), // 3 units in front
+        2.0f,                                          // 2 units above
+        -3.0f * glm::cos(_direction[_currentVehicle])  // 3 units in front
+    );
+    
+    // Update light position uniform
+    glm::vec3 pointLightPosition = planePos + lightOffset;
+    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
+        _shaderUniformLocations.pointLightPosition,
+        1,
+        glm::value_ptr(pointLightPosition));
+
+    // Make light brighter when moving forward
+    glm::vec3 pointLightColor;
+    if(_keys[GLFW_KEY_W]) {
+        pointLightColor = glm::vec3(0.4f, 0.4f, 0.4f); // Brighter white when moving
+    } else {
+        pointLightColor = glm::vec3(0.2f, 0.2f, 0.2f); // Dimmer white when stationary
+    }
+    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
+        _shaderUniformLocations.pointLightColor,
+        1,
+        glm::value_ptr(pointLightColor));
+
+    // Update ghosts only if we're not falling or exploding
+    if(!_isFalling && !_isExploding) {
+        _ghostManager->update(0.016f, glm::vec3(_pos[_currentVehicle].x, 
+                                               _currentHeight, 
+                                               _pos[_currentVehicle].y));
+    }
+}
+
+void A4Engine::run() {
+    while(!glfwWindowShouldClose(mpWindow)) {
+        glDrawBuffer(GL_BACK);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        GLint framebufferWidth, framebufferHeight;
+        glfwGetFramebufferSize(mpWindow, &framebufferWidth, &framebufferHeight);
+
+        glViewport(0, 0, framebufferWidth, framebufferHeight);
+        glm::mat4 projMtx = glm::perspective(45.0f, (GLfloat)framebufferWidth / (GLfloat)framebufferHeight, 0.001f, 1000.0f);
+        glm::mat4 viewMtx = freeCam ? _pFreeCam->getViewMatrix() : _pArcBall->getViewMatrix();
+
+        // Render skybox first
+        _renderSkybox(viewMtx, projMtx);
+        
+        // Then render scene
+        _renderScene(viewMtx, projMtx);
+
+        _updateScene();
+
+        glfwSwapBuffers(mpWindow);
+        glfwPollEvents();
+    }
+}
+
+//*************************************************************************************
+//
+// Private Helper FUnctions
+
+GLuint A4Engine::_loadAndRegisterTexture(const char* FILENAME) {
+    // our handle to the GPU
+    GLuint textureHandle = 0;
+
+    // enable setting to prevent image from being upside down
+    stbi_set_flip_vertically_on_load(true);
+
+    // will hold image parameters after load
+    GLint imageWidth, imageHeight, imageChannels;
+    // load image from file
+    GLubyte* data = stbi_load( FILENAME, &imageWidth, &imageHeight, &imageChannels, 0);
+
+    // if data was read from file
+    if( data ) {
+        const GLint STORAGE_TYPE = (imageChannels == 4 ? GL_RGBA : GL_RGB);
+
+        // TODO #01 - generate a texture handle
+        glGenTextures(1, &textureHandle);
+
+        // TODO #02 - bind it to be active
+        glBindTexture(GL_TEXTURE_2D, textureHandle);
+
+        // set texture parameters
+        // TODO #03 - mag filter
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        // TODO #04 - min filter
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+
+        // TODO #05 - wrap s
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+
+        // TODO #06 - wrap t
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        // TODO #07 - transfer image data to the GPU
+        glTexImage2D(GL_TEXTURE_2D, 0, STORAGE_TYPE, imageWidth, imageHeight, 0, STORAGE_TYPE, GL_UNSIGNED_BYTE, data);
+
+        fprintf( stdout, "[INFO]: %s texture map read in with handle %d\n", FILENAME, textureHandle);
+
+        // release image memory from CPU - it now lives on the GPU
+        stbi_image_free(data);
+    } else {
+        // load failed
+        fprintf( stderr, "[ERROR]: Could not load texture map \"%s\"\n", FILENAME );
+    }
+
+    // return generated texture handle
+    return textureHandle;
+}
+
+//*************************************************************************************
+//
+// Callbacks
+
+void a4_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods ) {
+    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+
+    // pass the key and action through to the engine
+    engine->handleKeyEvent(key, action);
+}
+
+void a4_cursor_callback(GLFWwindow *window, double x, double y ) {
+    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+
+    // pass the cursor position through to the engine
+    engine->handleCursorPositionEvent(glm::vec2(x, y));
+}
+
+void a4_mouse_button_callback(GLFWwindow *window, int button, int action, int mods ) {
+    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+
+    // pass the mouse button and action through to the engine
+    engine->handleMouseButtonEvent(button, action);
+}
+
+void a4_scroll_callback(GLFWwindow *window, double xOffset, double yOffset) {
+    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+
+    // pass the scroll offset through to the engine
+    engine->handleScrollEvent(glm::vec2(xOffset, yOffset));
+}
+
+void A4Engine::_setupSkybox() {
+    float vertices[] = {
+        // positions          // texture coords
+        -100.0f,  100.0f, -100.0f,   0.0f, 1.0f,   // back face
+        -100.0f, -100.0f, -100.0f,   0.0f, 0.0f,
+         100.0f, -100.0f, -100.0f,   1.0f, 0.0f,
+         100.0f, -100.0f, -100.0f,   1.0f, 0.0f,
+         100.0f,  100.0f, -100.0f,   1.0f, 1.0f,
+        -100.0f,  100.0f, -100.0f,   0.0f, 1.0f,
+
+        -100.0f, -100.0f,  100.0f,   0.0f, 0.0f,   // front face
+        -100.0f, -100.0f, -100.0f,   1.0f, 0.0f,
+        -100.0f,  100.0f, -100.0f,   1.0f, 1.0f,
+        -100.0f,  100.0f, -100.0f,   1.0f, 1.0f,
+        -100.0f,  100.0f,  100.0f,   0.0f, 1.0f,
+        -100.0f, -100.0f,  100.0f,   0.0f, 0.0f,
+
+         100.0f, -100.0f, -100.0f,   1.0f, 0.0f,   // right face
+         100.0f, -100.0f,  100.0f,   0.0f, 0.0f,
+         100.0f,  100.0f,  100.0f,   0.0f, 1.0f,
+         100.0f,  100.0f,  100.0f,   0.0f, 1.0f,
+         100.0f,  100.0f, -100.0f,   1.0f, 1.0f,
+         100.0f, -100.0f, -100.0f,   1.0f, 0.0f,
+
+        -100.0f, -100.0f,  100.0f,   0.0f, 0.0f,   // left face
+        -100.0f,  100.0f,  100.0f,   0.0f, 1.0f,
+         100.0f,  100.0f,  100.0f,   1.0f, 1.0f,
+         100.0f,  100.0f,  100.0f,   1.0f, 1.0f,
+         100.0f, -100.0f,  100.0f,   1.0f, 0.0f,
+        -100.0f, -100.0f,  100.0f,   0.0f, 0.0f,
+
+        -100.0f,  100.0f, -100.0f,   0.0f, 1.0f,   // top face
+         100.0f,  100.0f, -100.0f,   1.0f, 1.0f,
+         100.0f,  100.0f,  100.0f,   1.0f, 0.0f,
+         100.0f,  100.0f,  100.0f,   1.0f, 0.0f,
+        -100.0f,  100.0f,  100.0f,   0.0f, 0.0f,
+        -100.0f,  100.0f, -100.0f,   0.0f, 1.0f,
+
+        -100.0f, -100.0f, -100.0f,   0.0f, 0.0f,   // bottom face
+        -100.0f, -100.0f,  100.0f,   0.0f, 1.0f,
+         100.0f, -100.0f, -100.0f,   1.0f, 0.0f,
+         100.0f, -100.0f, -100.0f,   1.0f, 0.0f,
+        -100.0f, -100.0f,  100.0f,   0.0f, 1.0f,
+         100.0f, -100.0f,  100.0f,   1.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &_skyboxVAO);
+    glBindVertexArray(_skyboxVAO);
+
+    glGenBuffers(1, &_skyboxVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, _skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    _skyboxShader = new CSCI441::ShaderProgram("shaders/skybox.v.glsl", "shaders/skybox.f.glsl");
+    _skyboxUniformLocations.view = _skyboxShader->getUniformLocation("view");
+    _skyboxUniformLocations.projection = _skyboxShader->getUniformLocation("projection");
+    _skyboxUniformLocations.skyTexture = _skyboxShader->getUniformLocation("skyTexture");
+
+    _skyboxShader->useProgram();
+    _skyboxShader->setProgramUniform(_skyboxUniformLocations.skyTexture, 0);
+}
+
+void A4Engine::_renderSkybox(const glm::mat4& view, const glm::mat4& projection) const {
+    glDepthFunc(GL_LEQUAL);
+    _skyboxShader->useProgram();
+    
+    glm::mat4 skyboxView = glm::mat4(glm::mat3(view));
+    
+    _skyboxShader->setProgramUniform(_skyboxUniformLocations.view, skyboxView);
+    _skyboxShader->setProgramUniform(_skyboxUniformLocations.projection, projection);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _skyTexture);
+    
+    glBindVertexArray(_skyboxVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    
+    glDepthFunc(GL_LESS);
+}
+
+bool A4Engine::_checkCollisions(const glm::vec2& newPosition) {
+    bool collided = CollisionDetector::checkCollision(
+        newPosition, 
+        CollisionDetector::getCollisionObjects(), 
+        _playerRadius
+    );
+    
+    if(collided) {
+        fprintf(stdout, "[COLLISION] Collision detected at position (%.2f, %.2f)\n", 
+            newPosition.x, newPosition.y);
+            
+        // Print nearby objects for debugging
+        for(const auto& obj : CollisionDetector::getCollisionObjects()) {
+            float distance = glm::length(
+                glm::vec2(obj.position.x, obj.position.z) - newPosition
+            );
+            if(distance < 5.0f) { // Only show nearby objects
+                fprintf(stdout, "  - Nearby %s at (%.2f, %.2f) distance: %.2f\n", 
+                    obj.isTree ? "tree" : "building",
+                    obj.position.x, 
+                    obj.position.z,
+                    distance);
+            }
+        }
+    }
+    
+    return collided;
+}
