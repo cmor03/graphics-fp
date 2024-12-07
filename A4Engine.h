@@ -104,7 +104,9 @@ private:
     //vehicles
     Plane* _pColtonPlane;
 
-    static constexpr GLfloat WORLD_SIZE = 60.0f;
+    GLfloat WORLD_SIZE_X = 60.0f;
+    GLfloat WORLD_SIZE_Y = 60.0f;
+
 
 
     //***************************************************************************
@@ -166,11 +168,20 @@ private:
         /// \desc color to draw the building
         glm::vec3 color;
 
-        bool isTree;
-        GLdouble height;
     };
     /// \desc information list of all the buildings to draw
     std::vector<BuildingData> _buildings;
+
+    struct PointsData{
+        glm::mat4 modelMatrix;
+
+        glm::vec3 color;
+        glm::vec2 position;
+
+        bool toBeDeleted;
+    };
+
+    std::vector<PointsData> _points;
 
     void _drawTree();
 

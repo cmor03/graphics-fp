@@ -2,6 +2,7 @@
 #include <CSCI441/objects.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
+#include <algorithm>
 
 std::vector<glm::vec3> GhostManager::_allGhostPositions;
 bool GhostManager::_hasCollided = false;

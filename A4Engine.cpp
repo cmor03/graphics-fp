@@ -6,6 +6,8 @@
 
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
+#include <algorithm>
 
 //*************************************************************************************
 //
@@ -170,10 +172,10 @@ void A4Engine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numV
 
     // create our platform
     VertexNormalTextured platformVertices[4] = {
-            { { -WORLD_SIZE, 1.0f, -WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
-            { {  WORLD_SIZE, 1.0f, -WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
-            { { -WORLD_SIZE, 1.0f,  WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
-            { {  WORLD_SIZE, 1.0f,  WORLD_SIZE }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
+            { { 0, 1.0f, 0 }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
+            { {  WORLD_SIZE_X, 1.0f, 0 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
+            { { 0, 1.0f,  WORLD_SIZE_Y}, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
+            { {  WORLD_SIZE_X, 1.0f,  WORLD_SIZE_Y }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
     };
 
     GLushort platformIndices[4] = { 0, 1, 2, 3 };
@@ -354,6 +356,34 @@ void A4Engine::mCleanupScene() {
     delete _ghostManager;
     delete _particleSystem;
 }
+
+
+std::vector<std::vector<int>> read_csv(const std::string& filename) {
+    std::vector<std::vector<int>> data;
+    std::ifstream file(filename);
+    std::string line;
+
+    if (!file.is_open()) {
+        std::cerr << "Could not open the file" << std::endl;
+        return data;
+    }
+
+    while (std::getline(file, line)) {
+        std::vector<int> row;
+        std::stringstream ss(line);
+        std::string cell;
+
+        while (std::getline(ss, cell, ',')) {
+            row.push_back(std::stoi(cell));
+        }
+
+        data.push_back(row);
+    }
+
+    file.close();
+    return data;
+}
+
 void A4Engine::_generateEnvironment() {
     // Clear any existing collision objects
     CollisionDetector::clearCollisionObjects();
@@ -361,8 +391,14 @@ void A4Engine::_generateEnvironment() {
     //******************************************************************
     // parameters to make up our grid size and spacing, feel free to
     // play around with this
-    const GLfloat GRID_WIDTH = WORLD_SIZE * 1.8f;
-    const GLfloat GRID_LENGTH = WORLD_SIZE * 1.8f;
+
+    std::vector<std::vector<int>> world_matrix = read_csv("world.csv");
+    WORLD_SIZE_X = world_matrix[0].size();
+    WORLD_SIZE_Y = world_matrix.size();
+
+
+    const GLfloat GRID_WIDTH = WORLD_SIZE_X * 1.8f;
+    const GLfloat GRID_LENGTH = WORLD_SIZE_Y * 1.8f;
     const GLfloat GRID_SPACING_WIDTH = 1.0f;
     const GLfloat GRID_SPACING_LENGTH = 1.0f;
     // precomputed parameters based on above
@@ -374,43 +410,30 @@ void A4Engine::_generateEnvironment() {
 
     srand( time(0) );                                                   // seed our RNG
 
-    // psych! everything's on a grid.
-    for(int i = LEFT_END_POINT; i < RIGHT_END_POINT; i += GRID_SPACING_WIDTH) {
-        for(int j = BOTTOM_END_POINT; j < TOP_END_POINT; j += GRID_SPACING_LENGTH) {
-            // Reduce probability from 0.4f to 0.1f (75% reduction)
-            if( i % 2 && j % 2 && getRand() < 0.1f ) {
-                // translate to spot
-                glm::mat4 transToSpotMtx = glm::translate( glm::mat4(1.0), glm::vec3(i, 0.0f, j) );
-
-                // compute random height
-                GLdouble height = powf(getRand(), 2.5)*10 + 1;
-                // scale to building size
-                glm::mat4 scaleToHeightMtx = glm::scale( glm::mat4(1.0), glm::vec3(1, height, 1) );
-
-                // translate up to grid
-                glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, height/2.0f, 0) );
-
-                // compute full model matrix
-                glm::mat4 modelMatrix = transToHeight * scaleToHeightMtx * transToSpotMtx;
-
+    for(int i = 0; i < WORLD_SIZE_X; i++){
+        for(int j=0; j < WORLD_SIZE_Y; j++){
+            glm::mat4 transToSpotMtx = glm::translate( glm::mat4(1.0), glm::vec3(i*3, 0.0f, j*3));
+            if(world_matrix[i][j]==1){
+                glm::mat4 scaleToHeightMtx = glm::scale( glm::mat4(1.0), glm::vec3(3, 3, 3) );
+                glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 3/2.0f, 0) );
+                glm::mat4 modelMatrix = transToSpotMtx * transToHeight * scaleToHeightMtx;
                 // compute random color
                 glm::vec3 color( getRand(), getRand(), getRand() );
                 // store building properties
-                BuildingData currentBuilding = {modelMatrix, color, height<3, height};
+                BuildingData currentBuilding = {modelMatrix, color};
                 _buildings.emplace_back( currentBuilding );
-                
-                // Add collision object with much smaller radii
-                glm::vec3 position(i, 0.0f, j);
-                if(height < 3) {
-                    // Tree collision - reduced from 2.0f to 0.5f
-                    CollisionDetector::addCollisionObject(position, 0.5f, true);
-                } else {
-                    // Building collision - reduced from 1.5f to 0.75f
-                    CollisionDetector::addCollisionObject(position, 0.75f, false);
-                }
+                CollisionDetector::addCollisionObject(glm::vec3(i*3, 0, j*3),2, false);
+            }
+            else if(world_matrix[i][j]==0){
+                glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
+                glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
+                glm::vec3 color(1,1,1);
+                PointsData currentPoint  ={modelMatrix, color, glm::vec2(i*3, j*3), false};
+                _points.emplace_back(currentPoint);
             }
         }
     }
+
 }
 //*************************************************************************************
 //
@@ -437,26 +460,16 @@ void A4Engine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
 
 
     for( const BuildingData& currentBuilding : _buildings ) {
+        glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::BUILDING]);
+        mvpMtx = projMtx * viewMtx * currentBuilding.modelMatrix;
+        _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+        CSCI441::drawSolidCubeTextured(1.0);
+    }
+    for( const PointsData& currentPoint : _points){
 
-        if(currentBuilding.isTree){
-            glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::TREE]);
-            glm::mat4 pullTreesDown = glm::translate(glm::mat4(1),glm::vec3(0,currentBuilding.height*-0.08f-0.3f,0));
-            mvpMtx = projMtx * viewMtx * currentBuilding.modelMatrix*pullTreesDown;
-            _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
-            CSCI441::drawSolidCylinder(0.5,0.5,1,8,8);
-            glm::mat4 treeTop = glm::translate(glm::mat4(1),glm::vec3(0,1,0));
-            glm::mat4 treeTopMtx = currentBuilding.modelMatrix*treeTop;
-            mvpMtx = projMtx * viewMtx * treeTopMtx*pullTreesDown;
-            _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
-            glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::LEAVES]);
-            CSCI441::drawSolidCone(2,1,8,8);
-        }
-        else{
-            glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::BUILDING]);
-            mvpMtx = projMtx * viewMtx * currentBuilding.modelMatrix;
-            _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
-            CSCI441::drawSolidCubeTextured(1.0);
-        }
+        mvpMtx = projMtx * viewMtx * currentPoint.modelMatrix;
+        _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+        CSCI441::drawSolidSphere(0.2,8,8);
     }
 
     modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.1f, 0.0f));
@@ -522,14 +535,18 @@ void A4Engine::_updateScene() {
         return;  // Skip other updates while falling
     }
 
-    // Check if we've gone off the map
-    if(_pos[_currentVehicle].x > WORLD_SIZE || 
-       _pos[_currentVehicle].x < -WORLD_SIZE || 
-       _pos[_currentVehicle].y > WORLD_SIZE || 
-       _pos[_currentVehicle].y < -WORLD_SIZE) {
-        _isFalling = true;
-        _fallTime = 0.0f;
-        return;
+
+    if(_pos[_currentVehicle].x > WORLD_SIZE_X*3){
+        _pos[_currentVehicle].x = WORLD_SIZE_X*3;
+    }
+    if(_pos[_currentVehicle].y > WORLD_SIZE_Y*3){
+        _pos[_currentVehicle].y = WORLD_SIZE_Y*3;
+    }
+    if(_pos[_currentVehicle].x < 0){
+        _pos[_currentVehicle].x = 0;
+    }
+    if(_pos[_currentVehicle].y < 0){
+        _pos[_currentVehicle].y = 0;
     }
 
     // Rest of update code (movement, ghosts, etc.)
@@ -553,6 +570,20 @@ void A4Engine::_updateScene() {
                 // Collision detected, revert to last valid position
                 _pos[_currentVehicle] = _lastValidPosition;
             }
+
+            // Check collisions with points
+            for(PointsData& point : _points){
+                float distance = glm::distance(_pos[_currentVehicle], point.position);
+                if(distance<0.5){
+                    point.toBeDeleted = true;
+                }
+            }
+            // delete points that have been collected
+            _points.erase(
+                    std::remove_if(_points.begin(), _points.end(),
+                                   [](const PointsData& enemy) { return enemy.toBeDeleted; }),
+                    _points.end()
+            );
             
             // Update camera position to follow behind plane
             glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
