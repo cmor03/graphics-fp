@@ -698,9 +698,9 @@ void FPEngine::_updateScene() {
 
     // Update ghosts only if we're not falling or exploding
     if(!_isFalling && !_isExploding) {
-        // _ghostManager->update(0.016f, glm::vec3(_pos.x, 
-                                            //    _currentHeight, 
-                                            //    _pos.y));
+        _ghostManager->update(0.016f, glm::vec3(_pos.x, 
+                                               _currentHeight, 
+                                               _pos.y));
     }
 }
 
