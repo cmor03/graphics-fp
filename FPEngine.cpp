@@ -755,6 +755,30 @@ std::vector<glm::vec2> getPossibleMoves(
     return actually_possible_moves;
 }
 
+std::vector<glm::vec2> getPossibleMoves(
+        const std::vector<std::vector<int>> world_matrix,
+        const glm::vec2 current_pos
+) {
+    // Potential adjacent moves (right, left, down, up)
+    std::vector<glm::vec2> possible_moves = {
+            current_pos + glm::vec2(1, 0),   // right
+            current_pos + glm::vec2(-1, 0),  // left
+            current_pos + glm::vec2(0, 1),   // down
+            current_pos + glm::vec2(0, -1)   // up
+    };
+
+    std::vector<glm::vec2> actually_possible_moves;
+    // Filter out invalid moves
+    for(glm::vec2 move : possible_moves){
+        //fprintf(stdout,"looking at move (%f,%f)\n",move.x,move.y);
+        if(!(move.x<0 || move.y<0 || move.x>world_matrix[0].size()*3 || move.y>world_matrix.size()*3)&&world_matrix[move.x][move.y]!=1){
+            actually_possible_moves.emplace_back(move);
+        }
+    }
+
+    return actually_possible_moves;
+}
+
 void FPEngine::run() {
     while(!glfwWindowShouldClose(mpWindow)) {
         glDrawBuffer(GL_BACK);
