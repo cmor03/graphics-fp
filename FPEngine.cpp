@@ -59,37 +59,7 @@ void FPEngine::handleMouseButtonEvent(GLint button, GLint action) {
     }
 }
 
-void FPEngine::handleCursorPositionEvent(glm::vec2 currMousePosition) {
-    // if mouse hasn't moved in the window, prevent camera from flipping out
-    if(fabs(_mousePosition.x - MOUSE_UNINITIALIZED) <= 0.000001f) {
-        _mousePosition = currMousePosition;
-    }
 
-    // active motion - if the left mouse button is being held down while the mouse is moving
-    if(_leftMouseButtonState == GLFW_PRESS) {
-        glm::vec2 lastMousePosition = _mousePosition;
-        GLfloat dTheta = (currMousePosition.x - lastMousePosition.x) * 0.005;
-        GLfloat dPhi = (lastMousePosition.y - currMousePosition.y) * 0.005;
-        // rotate the camera by the distance the mouse moved
-        
-        _pArcBall->rotate( dTheta,dPhi );
-
-        // update the last mouse position
-        _mousePosition = currMousePosition;
-    }
-    // passive motion
-    else {
-
-    }
-
-    // update the mouse position
-    _mousePosition = currMousePosition;
-}
-
-void FPEngine::handleScrollEvent(glm::vec2 offset) {
-    _pArcBall->moveForward(offset.y);
-    glm::vec3 pos = _pArcBall->getPosition();
-}
 
 //*************************************************************************************
 //
@@ -149,10 +119,7 @@ void FPEngine::mSetupBuffers() {
     _generateEnvironment();
     _createQuad(_vaos[VAO_ID::QUAD], _vbos[VAO_ID::QUAD], _ibos[VAO_ID::QUAD], _numVAOPoints[VAO_ID::QUAD]);
 
-    _pColtonPlane = new Plane(_shaderProgram->getShaderProgramHandle(),
-                            _shaderUniformLocations.mvpMatrix,
-                            _shaderUniformLocations.normalMatrix,
-                            _shaderUniformLocations.materialColor);
+
 }
 
 void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
@@ -244,18 +211,14 @@ void FPEngine::mSetupTextures() {
 }
 
 void FPEngine::mSetupScene() {
-    _pArcBall = new ArcBall();
-    _pArcBall->setRadius(20.0f);
-    _pArcBall->setTheta(0.0f);
-    _pArcBall->setPhi(M_PI/1.5f);
-    _pArcBall->recomputeOrientation();
+
 
     _objectIndex = 0;
     _objectAngle = 0.0f;
 
     glm::vec3 directionalLightColor = glm::vec3(0.2f, 0.2f, 0.2f);
     glm::vec3 lightDirection = glm::vec3(-1,-1,-1);
-    glm::vec3 viewVector = _pArcBall->getPosition();
+
     
     glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
         _shaderUniformLocations.directionalLightColor,
@@ -274,20 +237,6 @@ void FPEngine::mSetupScene() {
 
     _setupSkybox();
 
-    _ghostManager = new GhostManager(_shaderProgram->getShaderProgramHandle(),
-                                   _shaderUniformLocations.mvpMatrix,
-                                   _shaderUniformLocations.normalMatrix,
-                                   _shaderUniformLocations.materialColor);
-    
-    _ghostManager->setMaxGhosts(30);
-    _ghostManager->setSpawnRadius(40.0f);
-    _ghostManager->setSpawnInterval(3.0f);
-    _ghostManager->setDensity(0.3f); 
-    
-    Ghost::setMovementSpeed(3.0f);
-    Ghost::setGhostSize(1.0f); 
-    Ghost::setGhostColor(glm::vec3(1.0f, 1.0f, 1.0f));
-    Ghost::setFadeDistance(30.0f);
 
     _particleSystem = new ParticleSystem(_shaderProgram->getShaderProgramHandle(),
                                        _shaderUniformLocations.mvpMatrix,
