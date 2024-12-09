@@ -101,7 +101,7 @@ private:
     GLfloat WORLD_SIZE_Y = 60.0f;
 
 
-
+    std::vector<std::vector<int>> world_matrix;
     //***************************************************************************
     // VAO & Object Information
 
@@ -179,7 +179,12 @@ private:
     struct Ghost{
         glm::mat4 modelMatrix;
         glm::vec3 color;
-        glm::vec2 position;
+        glm::vec2 current_pos;     // Current interpolated position
+        glm::vec2 target_pos;      // Next target point
+        glm::vec2 start_pos;
+        float movement_speed;      // Units per second
+        float progress;            // Movement progress [0, 1]
+        bool is_moving;
     };
 
     std::vector<Ghost> _ghosts;
@@ -205,7 +210,8 @@ private:
     /// \param FILENAME external image filename to load
     static GLuint _loadAndRegisterTexture(const char* FILENAME);
 
-    /// \desc generates building information to make up our scene
+
+            /// \desc generates building information to make up our scene
     void _generateEnvironment();
     //***************************************************************************
     // Shader Program Information
@@ -265,6 +271,8 @@ private:
 
     ParticleSystem* _particleSystem;
     bool _isExploding = false;
+
+    glm::vec2 findBestMove(std::vector<std::vector<int>> vector1, glm::vec2 vec1, glm::vec2 vec2);
 };
 
 void fp_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods );
