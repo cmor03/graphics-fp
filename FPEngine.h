@@ -9,7 +9,6 @@
 #include "ArcBall.h"
 #include "Plane.h"
 #include "CollisionDetector.h"
-#include "Ghost.h"
 #include "ParticleSystem.h"
 
 
@@ -177,6 +176,14 @@ private:
 
     std::vector<PointsData> _points;
 
+    struct Ghost{
+        glm::mat4 modelMatrix;
+        glm::vec3 color;
+        glm::vec2 position;
+    };
+
+    std::vector<Ghost> _ghosts;
+
     void _renderFPV(glm::mat4 projMtx) const;
 
     //***************************************************************************
@@ -255,7 +262,6 @@ private:
     glm::vec3 _spawnPosition = glm::vec3(0.0f, 0.5f, 0.0f);
     float _currentHeight = 0.5f;
 
-    GhostManager* _ghostManager;
 
     ParticleSystem* _particleSystem;
     bool _isExploding = false;

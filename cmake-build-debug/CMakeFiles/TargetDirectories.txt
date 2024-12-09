@@ -1,3 +1,3 @@
-C:/Users/htj55/CLionProjects/final/graphics-fp/cmake-build-debug/CMakeFiles/A4Project.dir
+C:/Users/htj55/CLionProjects/final/graphics-fp/cmake-build-debug/CMakeFiles/FinalProject.dir
 C:/Users/htj55/CLionProjects/final/graphics-fp/cmake-build-debug/CMakeFiles/edit_cache.dir
 C:/Users/htj55/CLionProjects/final/graphics-fp/cmake-build-debug/CMakeFiles/rebuild_cache.dir

@@ -273,20 +273,6 @@ void FPEngine::mSetupScene() {
 
     _setupSkybox();
 
-    _ghostManager = new GhostManager(_shaderProgram->getShaderProgramHandle(),
-                                   _shaderUniformLocations.mvpMatrix,
-                                   _shaderUniformLocations.normalMatrix,
-                                   _shaderUniformLocations.materialColor);
-    
-    _ghostManager->setMaxGhosts(30);
-    _ghostManager->setSpawnRadius(40.0f);
-    _ghostManager->setSpawnInterval(3.0f);
-    _ghostManager->setDensity(0.3f); 
-    
-    Ghost::setMovementSpeed(3.0f);
-    Ghost::setGhostSize(1.0f); 
-    Ghost::setGhostColor(glm::vec3(1.0f, 1.0f, 1.0f));
-    Ghost::setFadeDistance(30.0f);
 
     _particleSystem = new ParticleSystem(_shaderProgram->getShaderProgramHandle(),
                                        _shaderUniformLocations.mvpMatrix,
@@ -337,7 +323,6 @@ void FPEngine::mCleanupScene() {
     glDeleteBuffers(1, &_skyboxVBO);
     glDeleteTextures(1, &_skyTexture);
 
-    delete _ghostManager;
     delete _particleSystem;
 }
 
@@ -471,18 +456,9 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
         _pColtonPlane->drawPlane(modelMatrix, viewMtx, projMtx);
     }
 
-    _ghostManager->draw(viewMtx, projMtx);
 }
 
 void FPEngine::_updateScene() {
-    // Handle ghost collision explosion
-    if(GhostManager::hasCollided() && !_isExploding) {
-        _isExploding = true;
-        _particleSystem->spawn(glm::vec3(_pos.x, 
-                                        _currentHeight, 
-                                        _pos.y));
-        return;
-    }
     
     // Handle explosion animation and reset
     if(_isExploding) {
@@ -494,7 +470,6 @@ void FPEngine::_updateScene() {
             _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
             _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
-            _ghostManager->reset();
         }
         return;
     }
@@ -511,7 +486,6 @@ void FPEngine::_updateScene() {
             _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
             _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
-            _ghostManager->reset();
             return;
         }
         return;  // Skip other updates while falling
@@ -666,13 +640,6 @@ void FPEngine::_updateScene() {
         _shaderUniformLocations.pointLightColor,
         1,
         glm::value_ptr(pointLightColor));
-
-    // Update ghosts only if we're not falling or exploding
-    if(!_isFalling && !_isExploding) {
-        _ghostManager->update(0.016f, glm::vec3(_pos.x, 
-                                               _currentHeight, 
-                                               _pos.y));
-    }
 }
 
 void FPEngine::run() {
