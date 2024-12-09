@@ -94,6 +94,11 @@ private:
     GLfloat _direction;
     glm::vec2 _pos;
 
+    //0: normal
+    //1: collided moving x
+    //2: collided moving z
+    GLfloat _lastDir;
+
 
     //vehicles
     Plane* _pColtonPlane;

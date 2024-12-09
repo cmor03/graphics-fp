@@ -30,6 +30,7 @@ FPEngine::FPEngine()
     _direction = 0;
     _pos = glm::vec2(0,0);
     _playerRadius = 0.5f;
+    _lastDir = 0;
 }
 GLfloat getRand() {
     return (GLfloat)rand() / (GLfloat)RAND_MAX;
@@ -406,7 +407,7 @@ void FPEngine::_generateEnvironment() {
                 // store building properties
                 BuildingData currentBuilding = {modelMatrix, color};
                 _buildings.emplace_back( currentBuilding );
-                CollisionDetector::addCollisionObject(glm::vec3(i*3, 0, j*3),2, false);
+                CollisionDetector::addCollisionObject(glm::vec3(i*3, 0, j*3),2.1, false);
             }
             else if(world_matrix[i][j]==0){
                 glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
@@ -543,10 +544,38 @@ void FPEngine::_updateScene() {
             // No collision, update position
             _pos = newPos;
             _lastValidPosition = newPos;
-            _pColtonPlane->moveForward();
+            _lastDir = 0;
         } else {
             // Collision detected, revert to last valid position
-            _pos = _lastValidPosition;
+            CollisionObject* col = CollisionDetector::getCollidedObject(newPos);
+            bool x = false;
+            bool z = false;
+            if(_lastValidPosition.x > col->position.x + col->radius){
+                z = true;
+            }else if(_lastValidPosition.x < col->position.x - col->radius){
+                z = true;
+            } 
+            
+            if(_lastValidPosition.y > col->position.z + col->radius){
+                x = true;
+            }else if(_lastValidPosition.y < col->position.z - col->radius){
+                x = true;
+            }
+
+            if(x && (_lastDir == 0 || _lastDir == 1)){
+                _pos.x += 0.15f * glm::sin(_direction);
+                _lastDir = 1;
+            }
+            if(z && (_lastDir == 0 || _lastDir == 2)){
+                _pos.y += 0.15f * glm::cos(_direction);
+                _lastDir = 2;
+            }
+            if(_checkCollisions(_pos)){
+                _pos = _lastValidPosition;
+                _lastDir = 0;
+            }else{
+                _lastValidPosition = _pos;
+            }
         }
 
         // Check collisions with points
@@ -669,9 +698,9 @@ void FPEngine::_updateScene() {
 
     // Update ghosts only if we're not falling or exploding
     if(!_isFalling && !_isExploding) {
-        _ghostManager->update(0.016f, glm::vec3(_pos.x, 
-                                               _currentHeight, 
-                                               _pos.y));
+        // _ghostManager->update(0.016f, glm::vec3(_pos.x, 
+                                            //    _currentHeight, 
+                                            //    _pos.y));
     }
 }
 

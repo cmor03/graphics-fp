@@ -64,6 +64,7 @@
         "type_traits": "cpp",
         "utility": "cpp",
         "ranges": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "deque": "cpp"
     }
 }
