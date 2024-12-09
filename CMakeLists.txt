@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(A4Project)
+project(FinalProject)
 set(CMAKE_CXX_STANDARD 17)
 set(SOURCE_FILES main.cpp A4Engine.cpp A4Engine.h ArcBall.cpp ArcBall.h Plane.cpp Plane.h CollisionDetector.cpp CollisionDetector.h Ghost.cpp Ghost.h ParticleSystem.cpp ParticleSystem.h)
 
