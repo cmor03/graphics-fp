@@ -21,14 +21,13 @@ static const GLfloat GLM_2PI = glm::two_pi<float>();
 // Public Interface
 
 FPEngine::FPEngine()
-     : CSCI441::OpenGLEngine(4, 1, WINDOW_WIDTH, WINDOW_HEIGHT, "A4") {
+     : CSCI441::OpenGLEngine(4, 1, 720, 720, "A4") {
 
     for(auto& _key : _keys) _key = GL_FALSE;
 
     _mousePosition = glm::vec2(MOUSE_UNINITIALIZED, MOUSE_UNINITIALIZED );
     _leftMouseButtonState = GLFW_RELEASE;
     _direction = 0;
-    _phi = 0;
     _pos = glm::vec2(0,0);
     _playerRadius = 0.5f;
     _lastDir = 0;
@@ -378,7 +377,7 @@ void FPEngine::_generateEnvironment() {
     // parameters to make up our grid size and spacing, feel free to
     // play around with this
 
-    world_matrix = read_csv("world.csv");
+    std::vector<std::vector<int>> world_matrix = read_csv("world.csv");
     WORLD_SIZE_X = world_matrix[0].size();
     WORLD_SIZE_Y = world_matrix.size();
 
@@ -408,7 +407,7 @@ void FPEngine::_generateEnvironment() {
                 // store building properties
                 BuildingData currentBuilding = {modelMatrix, color};
                 _buildings.emplace_back( currentBuilding );
-                CollisionDetector::addCollisionObject(glm::vec3(i*3, 0, j*3),2, false);
+                CollisionDetector::addCollisionObject(glm::vec3(i*3, 0, j*3),2.1, false);
             }
             else if(world_matrix[i][j]==0){
                 glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
@@ -416,13 +415,6 @@ void FPEngine::_generateEnvironment() {
                 glm::vec3 color(1,1,1);
                 PointsData currentPoint  ={modelMatrix, color, glm::vec2(i*3, j*3), false};
                 _points.emplace_back(currentPoint);
-            }
-            else if(world_matrix[i][j]==2){
-                glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
-                glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
-                glm::vec3 color(1,1,1);
-                Ghost ghost = {modelMatrix, color, glm::vec2(i,j),glm::vec2(i,j),glm::vec2(i,j), 0.02, 1, false};
-                _ghosts.emplace_back(ghost);
             }
         }
     }
@@ -461,19 +453,6 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
         mvpMtx = projMtx * viewMtx * currentPoint.modelMatrix;
         _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
         CSCI441::drawSolidSphere(0.2,8,8);
-    }
-
-    for (const Ghost& ghost : _ghosts) {
-        glm::mat4 transToSpotMtx = glm::translate(glm::mat4(1.0), glm::vec3(ghost.current_pos.x*3, 0.0f, ghost.current_pos.y*3));
-        glm::mat4 transToHeight = glm::translate(glm::mat4(1.0), glm::vec3(0, 1.0f, 0));
-        glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
-
-        // Calculate the correct MVP matrix
-        glm::mat4 mvpMtx = projMtx * viewMtx * modelMatrix;
-        _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
-
-        // Draw the ghost
-        CSCI441::drawSolidCube(1);
     }
 
     modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.1f, 0.0f));
@@ -552,40 +531,6 @@ void FPEngine::_updateScene() {
     if(_pos.y < 0){
         _pos.y = 0;
     }
-    //get player position in grid
-    glm::vec2 player_aligned_pos = glm::vec2(std::round(_pos.x/3.0f), std::round(_pos.y/3.0f));
-    //fprintf(stdout, "player aligned position: (%f,%f)\n", player_aligned_pos.x, player_aligned_pos.y);
-    // move ghosts
-    for( Ghost& ghost : _ghosts){
-        if (!ghost.is_moving) {
-            ghost.start_pos = ghost.current_pos;
-            ghost.target_pos = findBestMove(world_matrix, ghost.current_pos,player_aligned_pos);
-            //fprintf(stdout, "Ghost's new target: (%f, %f)\n",
-                    //ghost.target_pos.x, ghost.target_pos.y);
-
-            // Only start moving if target is different
-            if (ghost.target_pos != ghost.start_pos) {
-                //fprintf(stdout, "moving ghost\n");
-                ghost.is_moving = true;
-                ghost.progress = 0.0f;
-            }
-        }
-        // Update movement progress
-        if (ghost.is_moving) {
-            ghost.progress += ghost.movement_speed;
-
-            // Interpolate position
-            ghost.current_pos = glm::mix(ghost.start_pos, ghost.target_pos, glm::clamp(ghost.progress, 0.0f, 1.0f));
-            //fprintf(stdout, "Ghost's new position: (%f, %f)\n",
-                    //ghost.current_pos.x, ghost.current_pos.y);
-
-            // Check if movement is complete
-            if (ghost.progress >= 1.0f) {
-                ghost.current_pos = ghost.target_pos;
-                ghost.is_moving = false;
-            }
-        }
-    }
 
     // Rest of update code (movement, ghosts, etc.)
     if(_keys[GLFW_KEY_W]) {
@@ -599,10 +544,38 @@ void FPEngine::_updateScene() {
             // No collision, update position
             _pos = newPos;
             _lastValidPosition = newPos;
-            _pColtonPlane->moveForward();
+            _lastDir = 0;
         } else {
             // Collision detected, revert to last valid position
-            _pos = _lastValidPosition;
+            CollisionObject* col = CollisionDetector::getCollidedObject(newPos);
+            bool x = false;
+            bool z = false;
+            if(_lastValidPosition.x > col->position.x + col->radius){
+                z = true;
+            }else if(_lastValidPosition.x < col->position.x - col->radius){
+                z = true;
+            } 
+            
+            if(_lastValidPosition.y > col->position.z + col->radius){
+                x = true;
+            }else if(_lastValidPosition.y < col->position.z - col->radius){
+                x = true;
+            }
+
+            if(x && (_lastDir == 0 || _lastDir == 1)){
+                _pos.x += 0.15f * glm::sin(_direction);
+                _lastDir = 1;
+            }
+            if(z && (_lastDir == 0 || _lastDir == 2)){
+                _pos.y += 0.15f * glm::cos(_direction);
+                _lastDir = 2;
+            }
+            if(_checkCollisions(_pos)){
+                _pos = _lastValidPosition;
+                _lastDir = 0;
+            }else{
+                _lastValidPosition = _pos;
+            }
         }
 
         // Check collisions with points
@@ -729,54 +702,6 @@ void FPEngine::_updateScene() {
                                                _currentHeight, 
                                                _pos.y));
     }
-}
-
-std::vector<glm::vec2> getPossibleMoves(
-        const std::vector<std::vector<int>> world_matrix,
-        const glm::vec2 current_pos
-) {
-    // Potential adjacent moves (right, left, down, up)
-    std::vector<glm::vec2> possible_moves = {
-            current_pos + glm::vec2(1, 0),   // right
-            current_pos + glm::vec2(-1, 0),  // left
-            current_pos + glm::vec2(0, 1),   // down
-            current_pos + glm::vec2(0, -1)   // up
-    };
-
-    std::vector<glm::vec2> actually_possible_moves;
-    // Filter out invalid moves
-    for(glm::vec2 move : possible_moves){
-        //fprintf(stdout,"looking at move (%f,%f)\n",move.x,move.y);
-        if(!(move.x<0 || move.y<0 || move.x>world_matrix[0].size()*3 || move.y>world_matrix.size()*3)&&world_matrix[move.x][move.y]!=1){
-            actually_possible_moves.emplace_back(move);
-        }
-    }
-
-    return actually_possible_moves;
-}
-
-std::vector<glm::vec2> getPossibleMoves(
-        const std::vector<std::vector<int>> world_matrix,
-        const glm::vec2 current_pos
-) {
-    // Potential adjacent moves (right, left, down, up)
-    std::vector<glm::vec2> possible_moves = {
-            current_pos + glm::vec2(1, 0),   // right
-            current_pos + glm::vec2(-1, 0),  // left
-            current_pos + glm::vec2(0, 1),   // down
-            current_pos + glm::vec2(0, -1)   // up
-    };
-
-    std::vector<glm::vec2> actually_possible_moves;
-    // Filter out invalid moves
-    for(glm::vec2 move : possible_moves){
-        //fprintf(stdout,"looking at move (%f,%f)\n",move.x,move.y);
-        if(!(move.x<0 || move.y<0 || move.x>world_matrix[0].size()*3 || move.y>world_matrix.size()*3)&&world_matrix[move.x][move.y]!=1){
-            actually_possible_moves.emplace_back(move);
-        }
-    }
-
-    return actually_possible_moves;
 }
 
 void FPEngine::run() {
@@ -1012,6 +937,8 @@ bool FPEngine::_checkCollisions(const glm::vec2& newPosition) {
     );
     
     if(collided) {
+        fprintf(stdout, "[COLLISION] Collision detected at position (%.2f, %.2f)\n", 
+            newPosition.x, newPosition.y);
             
         // Print nearby objects for debugging
         for(const auto& obj : CollisionDetector::getCollisionObjects()) {
@@ -1019,31 +946,14 @@ bool FPEngine::_checkCollisions(const glm::vec2& newPosition) {
                 glm::vec2(obj.position.x, obj.position.z) - newPosition
             );
             if(distance < 5.0f) { // Only show nearby objects
+                fprintf(stdout, "  - Nearby %s at (%.2f, %.2f) distance: %.2f\n", 
+                    obj.isTree ? "tree" : "building",
+                    obj.position.x, 
+                    obj.position.z,
+                    distance);
             }
         }
     }
     
     return collided;
 }
-
-glm::vec2 FPEngine::findBestMove(std::vector<std::vector<int>> world_matrix, glm::vec2 ghost_pos, glm::vec2 player_pos) {
-    // Get possible moves
-    std::vector<glm::vec2> possible_moves = getPossibleMoves(world_matrix, ghost_pos);
-    //fprintf(stdout, "looking for new move for ghost, play pos (%f,%f)\n",player_pos.x,player_pos.y);
-    // If no moves possible, stay in place
-    if (possible_moves.empty()) {
-        //fprintf(stdout,"no possible moves for ghost\n");
-        return ghost_pos;
-    }
-    glm::vec2 target;
-    float minimum = 1000000000;
-    for(glm::vec2 move : possible_moves){
-        float distance = glm::distance(move,player_pos);
-        if(distance<minimum){
-            minimum=distance;
-            target=move;
-        }
-    }
-    return target;
-}
-
