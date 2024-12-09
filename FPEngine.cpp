@@ -21,13 +21,14 @@ static const GLfloat GLM_2PI = glm::two_pi<float>();
 // Public Interface
 
 FPEngine::FPEngine()
-     : CSCI441::OpenGLEngine(4, 1, 720, 720, "A4") {
+     : CSCI441::OpenGLEngine(4, 1, WINDOW_WIDTH, WINDOW_HEIGHT, "A4") {
 
     for(auto& _key : _keys) _key = GL_FALSE;
 
     _mousePosition = glm::vec2(MOUSE_UNINITIALIZED, MOUSE_UNINITIALIZED );
     _leftMouseButtonState = GLFW_RELEASE;
     _direction = 0;
+    _phi = 0;
     _pos = glm::vec2(0,0);
     _playerRadius = 0.5f;
     _lastDir = 0;
@@ -59,7 +60,21 @@ void FPEngine::handleMouseButtonEvent(GLint button, GLint action) {
     }
 }
 
+void FPEngine::handleCursorPositionEvent(GLFWwindow* window, glm::vec2 currMousePosition) {
+    // if mouse hasn't moved in the window, prevent camera from flipping out
+    if(fabs(_mousePosition.x - MOUSE_UNINITIALIZED) <= 0.000001f) {
+        _mousePosition = currMousePosition;
+    }
 
+    _direction += (_mousePosition.x - currMousePosition.x) * 0.005;
+    _phi += (_mousePosition.y - currMousePosition.y) * 0.005;
+    // update the mouse position
+    _mousePosition = currMousePosition;
+    // glfwSetCursorPos(window,  WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+}
+
+void FPEngine::handleScrollEvent(glm::vec2 offset) {
+}
 
 //*************************************************************************************
 //
@@ -73,6 +88,9 @@ void FPEngine::mSetupGLFW() {
     glfwSetMouseButtonCallback(mpWindow, fp_mouse_button_callback);
     glfwSetCursorPosCallback(mpWindow, fp_cursor_callback);
     glfwSetScrollCallback(mpWindow, fp_scroll_callback);
+    glfwSetInputMode(mpWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+
 }
 
 void FPEngine::mSetupOpenGL() {
@@ -118,8 +136,6 @@ void FPEngine::mSetupBuffers() {
     _createPlatform(_vaos[VAO_ID::PLATFORM], _vbos[VAO_ID::PLATFORM], _ibos[VAO_ID::PLATFORM], _numVAOPoints[VAO_ID::PLATFORM]);
     _generateEnvironment();
     _createQuad(_vaos[VAO_ID::QUAD], _vbos[VAO_ID::QUAD], _ibos[VAO_ID::QUAD], _numVAOPoints[VAO_ID::QUAD]);
-
-
 }
 
 void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
@@ -211,14 +227,12 @@ void FPEngine::mSetupTextures() {
 }
 
 void FPEngine::mSetupScene() {
-
-
     _objectIndex = 0;
     _objectAngle = 0.0f;
 
     glm::vec3 directionalLightColor = glm::vec3(0.2f, 0.2f, 0.2f);
     glm::vec3 lightDirection = glm::vec3(-1,-1,-1);
-
+    glm::vec3 viewVector = glm::vec3(1,0,0);
     
     glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
         _shaderUniformLocations.directionalLightColor,
@@ -278,8 +292,6 @@ void FPEngine::mCleanupTextures() {
 
 void FPEngine::mCleanupScene() {
     fprintf(stdout, "[INFO]: ...deleting scene...\n");
-    delete _pArcBall;
-    delete _pColtonPlane;
     
     // Cleanup skybox resources
     delete _skyboxShader;
@@ -434,11 +446,6 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     glBindTexture(GL_TEXTURE_2D, 0);
     if(_isExploding) {
         _particleSystem->draw(viewMtx, projMtx);
-    } else {
-        modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::translate(modelMatrix, glm::vec3(_pos.x, _currentHeight, _pos.y));
-        modelMatrix = glm::rotate(modelMatrix, _direction, CSCI441::Y_AXIS);
-        _pColtonPlane->drawPlane(modelMatrix, viewMtx, projMtx);
     }
 
     _ghostManager->draw(viewMtx, projMtx);
@@ -591,24 +598,9 @@ void FPEngine::_updateScene() {
         // delete points that have been collected
         _points.erase(
                 std::remove_if(_points.begin(), _points.end(),
-                                [](const PointsData& enemy) { return enemy.toBeDeleted; }),
+                                [](const PointsData& point) { return point.toBeDeleted; }),
                 _points.end()
         );
-        
-        // Update camera position to follow behind plane
-        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
-        // Calculate camera offset based on plane's direction - now offset is in FRONT of plane
-        glm::vec3 offset = glm::vec3(
-            10.0f * glm::sin(_direction), // Removed negative
-            5.0f,                                          // Height stays same
-            10.0f * glm::cos(_direction)  // Removed negative
-        );
-        
-        // Set camera position and look at point
-        _pArcBall->setPosition(planePos + offset);
-        _pArcBall->setLookAtPoint(planePos);
-        _pArcBall->setTheta(-_direction); // Removed + pi
-        _pArcBall->recomputeOrientation();
     }
     if(_keys[GLFW_KEY_S]){
         glm::vec2 newPos = _pos;
@@ -616,59 +608,175 @@ void FPEngine::_updateScene() {
         newPos.y -= 0.15f * glm::cos(_direction);
         
         if(!_checkCollisions(newPos)) {
+            // No collision, update position
             _pos = newPos;
             _lastValidPosition = newPos;
-            _pColtonPlane->moveBackward();
+            _lastDir = 0;
         } else {
-            _pos = _lastValidPosition;
+            // Collision detected, revert to last valid position
+            CollisionObject* col = CollisionDetector::getCollidedObject(newPos);
+            bool x = false;
+            bool z = false;
+            if(_lastValidPosition.x > col->position.x + col->radius){
+                z = true;
+            }else if(_lastValidPosition.x < col->position.x - col->radius){
+                z = true;
+            }
+
+            if(_lastValidPosition.y > col->position.z + col->radius){
+                x = true;
+            }else if(_lastValidPosition.y < col->position.z - col->radius){
+                x = true;
+            }
+
+            if(x && (_lastDir == 0 || _lastDir == 1)){
+                _pos.x -= 0.15f * glm::sin(_direction);
+                _lastDir = 1;
+            }
+            if(z && (_lastDir == 0 || _lastDir == 2)){
+                _pos.y -= 0.15f * glm::cos(_direction);
+                _lastDir = 2;
+            }
+            if(_checkCollisions(_pos)){
+                _pos = _lastValidPosition;
+                _lastDir = 0;
+            }else{
+                _lastValidPosition = _pos;
+            }
         }
-        
-        // Update camera position to follow behind plane
-        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
-        glm::vec3 offset = glm::vec3(
-            10.0f * glm::sin(_direction),
-            5.0f,
-            10.0f * glm::cos(_direction)
+        // Check collisions with points
+        for(PointsData& point : _points){
+            float distance = glm::distance(_pos, point.position);
+            if(distance<0.5){
+                point.toBeDeleted = true;
+            }
+        }
+        // delete points that have been collected
+        _points.erase(
+                std::remove_if(_points.begin(), _points.end(),
+                                [](const PointsData& point) { return point.toBeDeleted; }),
+                _points.end()
         );
-        
-        _pArcBall->setPosition(planePos + offset);
-        _pArcBall->setLookAtPoint(planePos);
-        _pArcBall->setTheta(-_direction);
-        _pArcBall->recomputeOrientation();
     }
 
     //turn when A or D pressed
     if(_keys[GLFW_KEY_A]){
-        _direction += 0.03f;
+        // Calculate new position
+        glm::vec2 newPos = _pos;
+        newPos.x += 0.15f * glm::sin(_direction + M_PI/2);
+        newPos.y += 0.15f * glm::cos(_direction + M_PI/2);
         
-        // Update camera when turning
-        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
-        glm::vec3 offset = glm::vec3(
-            10.0f * glm::sin(_direction),
-            5.0f,
-            10.0f * glm::cos(_direction)
+        // Check for collisions
+        if(!_checkCollisions(newPos)) {
+            // No collision, update position
+            _pos = newPos;
+            _lastValidPosition = newPos;
+            _lastDir = 0;
+        } else {
+            // Collision detected, revert to last valid position
+            CollisionObject* col = CollisionDetector::getCollidedObject(newPos);
+            bool x = false;
+            bool z = false;
+            if(_lastValidPosition.x > col->position.x + col->radius){
+                z = true;
+            }else if(_lastValidPosition.x < col->position.x - col->radius){
+                z = true;
+            }
+
+            if(_lastValidPosition.y > col->position.z + col->radius){
+                x = true;
+            }else if(_lastValidPosition.y < col->position.z - col->radius){
+                x = true;
+            }
+
+            if(x && (_lastDir == 0 || _lastDir == 1)){
+                _pos.x += 0.15f * glm::sin(_direction + M_PI/2);
+                _lastDir = 1;
+            }
+            if(z && (_lastDir == 0 || _lastDir == 2)){
+                _pos.y += 0.15f * glm::cos(_direction + M_PI/2);
+                _lastDir = 2;
+            }
+            if(_checkCollisions(_pos)){
+                _pos = _lastValidPosition;
+                _lastDir = 0;
+            }else{
+                _lastValidPosition = _pos;
+            }
+        }
+
+        // Check collisions with points
+        for(PointsData& point : _points){
+            float distance = glm::distance(_pos, point.position);
+            if(distance<0.5){
+                point.toBeDeleted = true;
+            }
+        }
+        // delete points that have been collected
+        _points.erase(
+                std::remove_if(_points.begin(), _points.end(),
+                                [](const PointsData& point) { return point.toBeDeleted; }),
+                _points.end()
         );
-        
-        _pArcBall->setPosition(planePos + offset);
-        _pArcBall->setLookAtPoint(planePos);
-        _pArcBall->setTheta(-_direction);
-        _pArcBall->recomputeOrientation();
     }
     if(_keys[GLFW_KEY_D]){
-        _direction -= 0.03f;
+        // Calculate new position
+        glm::vec2 newPos = _pos;
+        newPos.x += 0.15f * glm::sin(_direction - M_PI/2);
+        newPos.y += 0.15f * glm::cos(_direction - M_PI/2);
         
-        // Update camera when turning
-        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
-        glm::vec3 offset = glm::vec3(
-            10.0f * glm::sin(_direction),
-            5.0f,
-            10.0f * glm::cos(_direction)
+        // Check for collisions
+        if(!_checkCollisions(newPos)) {
+            // No collision, update position
+            _pos = newPos;
+            _lastValidPosition = newPos;
+            _lastDir = 0;
+        } else {
+            // Collision detected, revert to last valid position
+            CollisionObject* col = CollisionDetector::getCollidedObject(newPos);
+            bool x = false;
+            bool z = false;
+            if(_lastValidPosition.x > col->position.x + col->radius){
+                z = true;
+            }else if(_lastValidPosition.x < col->position.x - col->radius){
+                z = true;
+            }
+
+            if(_lastValidPosition.y > col->position.z + col->radius){
+                x = true;
+            }else if(_lastValidPosition.y < col->position.z - col->radius){
+                x = true;
+            }
+
+            if(x && (_lastDir == 0 || _lastDir == 1)){
+                _pos.x += 0.15f * glm::sin(_direction - M_PI/2);
+                _lastDir = 1;
+            }
+            if(z && (_lastDir == 0 || _lastDir == 2)){
+                _pos.y += 0.15f * glm::cos(_direction - M_PI/2);
+                _lastDir = 2;
+            }
+            if(_checkCollisions(_pos)){
+                _pos = _lastValidPosition;
+                _lastDir = 0;
+            }else{
+                _lastValidPosition = _pos;
+            }
+        }
+
+        // Check collisions with points
+        for(PointsData& point : _points){
+            float distance = glm::distance(_pos, point.position);
+            if(distance<0.5){
+                point.toBeDeleted = true;
+            }
+        }
+        // delete points that have been collected
+        _points.erase(
+                std::remove_if(_points.begin(), _points.end(),
+                                [](const PointsData& point) { return point.toBeDeleted; }),
+                _points.end()
         );
-        
-        _pArcBall->setPosition(planePos + offset);
-        _pArcBall->setLookAtPoint(planePos);
-        _pArcBall->setTheta(-_direction);
-        _pArcBall->recomputeOrientation();
     }
     
 
@@ -740,16 +848,34 @@ void FPEngine::run() {
         glfwGetFramebufferSize(mpWindow, &framebufferWidth, &framebufferHeight);
 
         glViewport(0, 0, framebufferWidth, framebufferHeight);
-        glm::mat4 projMtx = glm::perspective(45.0f, (GLfloat)framebufferWidth / (GLfloat)framebufferHeight, 0.001f, 1000.0f);
-        glm::mat4 viewMtx = _pArcBall->getViewMatrix();
 
-        // Render skybox first
+        glm::mat4 projMtx = glm::perspective(30.0f, (GLfloat)framebufferWidth / (GLfloat)framebufferHeight, 0.001f, 1000.0f);
+        glm::vec3 position = glm::vec3(
+            _pos.x + 0.5f * glm::sin(_direction),
+            1.5f,
+            _pos.y + 0.5f * glm::cos(_direction)
+        );
+        glm::vec3 forward = glm::vec3(
+            glm::sin(_direction),
+            glm::sin(_phi),
+            glm::cos(_direction)
+        );
+
+        glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
+            _shaderUniformLocations.viewVector,
+            1,
+            glm::value_ptr(glm::normalize(forward)));
+
+        glm::vec3 up = glm::vec3(0.0f, -1.0f, 0.0f);
+        glm::mat4 viewMtx = glm::lookAt(position, position + forward, up);
         _renderSkybox(viewMtx, projMtx);
         
         // Then render scene
         _renderScene(viewMtx, projMtx);
 
         _updateScene();
+
+
 
         glfwSwapBuffers(mpWindow);
         glfwPollEvents();
@@ -853,7 +979,7 @@ void fp_cursor_callback(GLFWwindow *window, double x, double y ) {
     auto engine = (FPEngine*) glfwGetWindowUserPointer(window);
 
     // pass the cursor position through to the engine
-    engine->handleCursorPositionEvent(glm::vec2(x, y));
+    engine->handleCursorPositionEvent(window, glm::vec2(x, y));
 }
 
 void fp_mouse_button_callback(GLFWwindow *window, int button, int action, int mods ) {
