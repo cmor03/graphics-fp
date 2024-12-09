@@ -299,7 +299,6 @@ void FPEngine::mCleanupScene() {
     glDeleteBuffers(1, &_skyboxVBO);
     glDeleteTextures(1, &_skyTexture);
 
-    delete _ghostManager;
     delete _particleSystem;
 }
 
@@ -448,18 +447,17 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
         _particleSystem->draw(viewMtx, projMtx);
     }
 
-    _ghostManager->draw(viewMtx, projMtx);
 }
 
 void FPEngine::_updateScene() {
-    // Handle ghost collision explosion
-    if(GhostManager::hasCollided() && !_isExploding) {
-        _isExploding = true;
-        _particleSystem->spawn(glm::vec3(_pos.x, 
-                                        _currentHeight, 
-                                        _pos.y));
-        return;
-    }
+//    // Handle ghost collision explosion
+//    if(GhostManager::hasCollided() && !_isExploding) {
+//        _isExploding = true;
+//        _particleSystem->spawn(glm::vec3(_pos.x,
+//                                        _currentHeight,
+//                                        _pos.y));
+//        return;
+//    }
     
     // Handle explosion animation and reset
     if(_isExploding) {
@@ -471,7 +469,6 @@ void FPEngine::_updateScene() {
             _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
             _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
-            _ghostManager->reset();
         }
         return;
     }
@@ -488,7 +485,6 @@ void FPEngine::_updateScene() {
             _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
             _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
-            _ghostManager->reset();
             return;
         }
         return;  // Skip other updates while falling
@@ -809,9 +805,6 @@ void FPEngine::_updateScene() {
 
     // Update ghosts only if we're not falling or exploding
     if(!_isFalling && !_isExploding) {
-        _ghostManager->update(0.016f, glm::vec3(_pos.x, 
-                                               _currentHeight, 
-                                               _pos.y));
     }
 }
 
