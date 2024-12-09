@@ -12,7 +12,8 @@ struct CollisionObject {
 
 class CollisionDetector {
 public:
-    static bool checkCollision(const glm::vec2& playerPos, const std::vector<CollisionObject>& objects, float playerRadius = 1.0f);
+    static bool checkCollision(const glm::vec2& playerPos, float playerRadius = 1.0f);
+    static CollisionObject* getCollidedObject(const glm::vec2& playerPos, float playerRadius = 1.0f);
     static void addCollisionObject(const glm::vec3& pos, float radius, bool isTree);
     static void clearCollisionObjects();
     static const std::vector<CollisionObject>& getCollisionObjects() { return _collisionObjects; }

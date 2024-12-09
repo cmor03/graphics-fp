@@ -1,4 +1,4 @@
-#include "A4Engine.h"
+#include "FPEngine.h"
 
 #include <CSCI441/objects.hpp>
 
@@ -20,26 +20,22 @@ static const GLfloat GLM_2PI = glm::two_pi<float>();
 //
 // Public Interface
 
-A4Engine::A4Engine()
+FPEngine::FPEngine()
      : CSCI441::OpenGLEngine(4, 1, 720, 720, "A4") {
 
     for(auto& _key : _keys) _key = GL_FALSE;
 
     _mousePosition = glm::vec2(MOUSE_UNINITIALIZED, MOUSE_UNINITIALIZED );
     _leftMouseButtonState = GLFW_RELEASE;
-    _direction[0] = 0;
-    _direction[1] = 0;
-    _pos[0] = glm::vec2(0,0);
-    _pos[1] = glm::vec2(5,5);
-    _currentVehicle = 0;
-    freeCam = false;
+    _direction = 0;
+    _pos = glm::vec2(0,0);
     _playerRadius = 0.5f;
 }
 GLfloat getRand() {
     return (GLfloat)rand() / (GLfloat)RAND_MAX;
 }
 
-void A4Engine::handleKeyEvent(GLint key, GLint action) {
+void FPEngine::handleKeyEvent(GLint key, GLint action) {
     if(key != GLFW_KEY_UNKNOWN)
         _keys[key] = ((action == GLFW_PRESS) || (action == GLFW_REPEAT));
 
@@ -55,14 +51,14 @@ void A4Engine::handleKeyEvent(GLint key, GLint action) {
     }
 }
 
-void A4Engine::handleMouseButtonEvent(GLint button, GLint action) {
+void FPEngine::handleMouseButtonEvent(GLint button, GLint action) {
 
     if( button == GLFW_MOUSE_BUTTON_LEFT ) {
         _leftMouseButtonState = action;
     }
 }
 
-void A4Engine::handleCursorPositionEvent(glm::vec2 currMousePosition) {
+void FPEngine::handleCursorPositionEvent(glm::vec2 currMousePosition) {
     // if mouse hasn't moved in the window, prevent camera from flipping out
     if(fabs(_mousePosition.x - MOUSE_UNINITIALIZED) <= 0.000001f) {
         _mousePosition = currMousePosition;
@@ -74,12 +70,9 @@ void A4Engine::handleCursorPositionEvent(glm::vec2 currMousePosition) {
         GLfloat dTheta = (currMousePosition.x - lastMousePosition.x) * 0.005;
         GLfloat dPhi = (lastMousePosition.y - currMousePosition.y) * 0.005;
         // rotate the camera by the distance the mouse moved
-        if(freeCam){
-            _pFreeCam->rotate(dTheta,dPhi);
-        }
-        else{
-            _pArcBall->rotate( dTheta,dPhi );
-        }
+        
+        _pArcBall->rotate( dTheta,dPhi );
+
         // update the last mouse position
         _mousePosition = currMousePosition;
     }
@@ -92,28 +85,26 @@ void A4Engine::handleCursorPositionEvent(glm::vec2 currMousePosition) {
     _mousePosition = currMousePosition;
 }
 
-void A4Engine::handleScrollEvent(glm::vec2 offset) {
-    if(!freeCam) {
-        _pArcBall->moveForward(offset.y);
-        glm::vec3 pos = _pArcBall->getPosition();
-    }
+void FPEngine::handleScrollEvent(glm::vec2 offset) {
+    _pArcBall->moveForward(offset.y);
+    glm::vec3 pos = _pArcBall->getPosition();
 }
 
 //*************************************************************************************
 //
 // Engine Setup
 
-void A4Engine::mSetupGLFW() {
+void FPEngine::mSetupGLFW() {
     CSCI441::OpenGLEngine::mSetupGLFW();
 
     // Update callback references from mp_ to a4_
-    glfwSetKeyCallback(mpWindow, a4_keyboard_callback);
-    glfwSetMouseButtonCallback(mpWindow, a4_mouse_button_callback);
-    glfwSetCursorPosCallback(mpWindow, a4_cursor_callback);
-    glfwSetScrollCallback(mpWindow, a4_scroll_callback);
+    glfwSetKeyCallback(mpWindow, fp_keyboard_callback);
+    glfwSetMouseButtonCallback(mpWindow, fp_mouse_button_callback);
+    glfwSetCursorPosCallback(mpWindow, fp_cursor_callback);
+    glfwSetScrollCallback(mpWindow, fp_scroll_callback);
 }
 
-void A4Engine::mSetupOpenGL() {
+void FPEngine::mSetupOpenGL() {
     glEnable( GL_DEPTH_TEST );					                    // enable depth testing
     glDepthFunc( GL_LESS );							                // use less than depth test
 
@@ -124,7 +115,7 @@ void A4Engine::mSetupOpenGL() {
     
 }
 
-void A4Engine::mSetupShaders() {
+void FPEngine::mSetupShaders() {
     _shaderProgram = new CSCI441::ShaderProgram("shaders/mp.v.glsl", "shaders/mp.f.glsl" );
     // query uniform locations
     _shaderUniformLocations.mvpMatrix      = _shaderProgram->getUniformLocation("mvpMatrix");
@@ -148,7 +139,7 @@ void A4Engine::mSetupShaders() {
                                          _shaderAttributeLocations.inTexCoord);
 }
 
-void A4Engine::mSetupBuffers() {
+void FPEngine::mSetupBuffers() {
     glGenVertexArrays( NUM_VAOS, _vaos );
     glGenBuffers( NUM_VAOS, _vbos );
     glGenBuffers( NUM_VAOS, _ibos );
@@ -163,7 +154,7 @@ void A4Engine::mSetupBuffers() {
                             _shaderUniformLocations.materialColor);
 }
 
-void A4Engine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
+void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
     struct VertexNormalTextured {
         glm::vec3 position;
         glm::vec3 normal;
@@ -203,7 +194,7 @@ void A4Engine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numV
     fprintf( stdout, "[INFO]: platform read in with VAO/VBO/IBO %d/%d/%d & %d points\n", vao, vbo, ibo, numVAOPoints );
 }
 
-void A4Engine::_createQuad(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
+void FPEngine::_createQuad(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
 
    struct VertexNormalTextured {
        glm::vec3 position;
@@ -241,7 +232,7 @@ void A4Engine::_createQuad(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPo
    fprintf( stdout, "[INFO]: quad read in with VAO/VBO/IBO %d/%d/%d & %d points\n", vao, vbo, ibo, numVAOPoints );
 }
 
-void A4Engine::mSetupTextures() {
+void FPEngine::mSetupTextures() {
     _texHandles[TEXTURE_ID::GROUND] = _loadAndRegisterTexture("assets/textures/ground.png");
     _texHandles[TEXTURE_ID::TREE] = _loadAndRegisterTexture("assets/textures/tree.png");
     _texHandles[TEXTURE_ID::BUILDING] = _loadAndRegisterTexture("assets/textures/building.png");
@@ -251,19 +242,12 @@ void A4Engine::mSetupTextures() {
     fprintf(stdout, "[INFO]: Skybox texture handle: %d\n", _skyTexture);
 }
 
-void A4Engine::mSetupScene() {
+void FPEngine::mSetupScene() {
     _pArcBall = new ArcBall();
     _pArcBall->setRadius(20.0f);
     _pArcBall->setTheta(0.0f);
     _pArcBall->setPhi(M_PI/1.5f);
     _pArcBall->recomputeOrientation();
-
-    _pFreeCam = new CSCI441::FreeCam();
-    _pFreeCam->setPosition(glm::vec3(10.0f, 10.0f, 10.0f) );
-    _pFreeCam->setTheta(5.52f );
-    _pFreeCam->setPhi(0.9f );
-    _pFreeCam->recomputeOrientation();
-    _cameraSpeed = glm::vec2(0.25f, 0.02f);
 
     _objectIndex = 0;
     _objectAngle = 0.0f;
@@ -313,12 +297,12 @@ void A4Engine::mSetupScene() {
 //
 // Engine Cleanup
 
-void A4Engine::mCleanupShaders() {
+void FPEngine::mCleanupShaders() {
     fprintf( stdout, "[INFO]: ...deleting Shaders.\n" );
     delete _shaderProgram;
 }
 
-void A4Engine::mCleanupBuffers() {
+void FPEngine::mCleanupBuffers() {
     fprintf( stdout, "[INFO]: ...deleting VAOs....\n" );
     CSCI441::deleteObjectVAOs();
     glDeleteVertexArrays( NUM_VAOS, _vaos );
@@ -335,14 +319,14 @@ void A4Engine::mCleanupBuffers() {
     delete _pHellknight;
 }
 
-void A4Engine::mCleanupTextures() {
+void FPEngine::mCleanupTextures() {
     fprintf( stdout, "[INFO]: ...deleting textures\n" );
     // TODO #23 - delete textures
     glDeleteTextures(4, _texHandles);
 
 }
 
-void A4Engine::mCleanupScene() {
+void FPEngine::mCleanupScene() {
     fprintf(stdout, "[INFO]: ...deleting scene...\n");
     delete _pArcBall;
     delete _pColtonPlane;
@@ -384,7 +368,7 @@ std::vector<std::vector<int>> read_csv(const std::string& filename) {
     return data;
 }
 
-void A4Engine::_generateEnvironment() {
+void FPEngine::_generateEnvironment() {
     // Clear any existing collision objects
     CollisionDetector::clearCollisionObjects();
     
@@ -439,9 +423,7 @@ void A4Engine::_generateEnvironment() {
 //
 // Rendering / Drawing Functions - this is where the magic happens!
 
-void A4Engine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
-
-
+void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     // use our lighting shader program
     _shaderProgram->useProgram();
     glm::vec3 defaultColor = glm::vec3(-1,-1,-1);
@@ -484,21 +466,21 @@ void A4Engine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
         _particleSystem->draw(viewMtx, projMtx);
     } else {
         modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::translate(modelMatrix, glm::vec3(_pos[_currentVehicle].x, _currentHeight, _pos[_currentVehicle].y));
-        modelMatrix = glm::rotate(modelMatrix, _direction[_currentVehicle], CSCI441::Y_AXIS);
+        modelMatrix = glm::translate(modelMatrix, glm::vec3(_pos.x, _currentHeight, _pos.y));
+        modelMatrix = glm::rotate(modelMatrix, _direction, CSCI441::Y_AXIS);
         _pColtonPlane->drawPlane(modelMatrix, viewMtx, projMtx);
     }
 
     _ghostManager->draw(viewMtx, projMtx);
 }
 
-void A4Engine::_updateScene() {
+void FPEngine::_updateScene() {
     // Handle ghost collision explosion
     if(GhostManager::hasCollided() && !_isExploding) {
         _isExploding = true;
-        _particleSystem->spawn(glm::vec3(_pos[_currentVehicle].x, 
+        _particleSystem->spawn(glm::vec3(_pos.x, 
                                         _currentHeight, 
-                                        _pos[_currentVehicle].y));
+                                        _pos.y));
         return;
     }
     
@@ -509,8 +491,8 @@ void A4Engine::_updateScene() {
         if(!_particleSystem->isAlive()) {
             // Reset everything after explosion
             _isExploding = false;
-            _pos[_currentVehicle] = glm::vec2(_spawnPosition.x, _spawnPosition.z);
-            _direction[_currentVehicle] = 0.0f;
+            _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
+            _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
             _ghostManager->reset();
         }
@@ -526,8 +508,8 @@ void A4Engine::_updateScene() {
             // Reset everything
             _isFalling = false;
             _fallTime = 0.0f;
-            _pos[_currentVehicle] = glm::vec2(_spawnPosition.x, _spawnPosition.z);
-            _direction[_currentVehicle] = 0.0f;
+            _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
+            _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
             _ghostManager->reset();
             return;
@@ -536,145 +518,134 @@ void A4Engine::_updateScene() {
     }
 
 
-    if(_pos[_currentVehicle].x > WORLD_SIZE_X*3){
-        _pos[_currentVehicle].x = WORLD_SIZE_X*3;
+    if(_pos.x > WORLD_SIZE_X*3){
+        _pos.x = WORLD_SIZE_X*3;
     }
-    if(_pos[_currentVehicle].y > WORLD_SIZE_Y*3){
-        _pos[_currentVehicle].y = WORLD_SIZE_Y*3;
+    if(_pos.y > WORLD_SIZE_Y*3){
+        _pos.y = WORLD_SIZE_Y*3;
     }
-    if(_pos[_currentVehicle].x < 0){
-        _pos[_currentVehicle].x = 0;
+    if(_pos.x < 0){
+        _pos.x = 0;
     }
-    if(_pos[_currentVehicle].y < 0){
-        _pos[_currentVehicle].y = 0;
+    if(_pos.y < 0){
+        _pos.y = 0;
     }
 
     // Rest of update code (movement, ghosts, etc.)
     if(_keys[GLFW_KEY_W]) {
-        if(freeCam){
-            _pFreeCam->moveForward(_cameraSpeed.x);
+        // Calculate new position
+        glm::vec2 newPos = _pos;
+        newPos.x += 0.15f * glm::sin(_direction);
+        newPos.y += 0.15f * glm::cos(_direction);
+        
+        // Check for collisions
+        if(!_checkCollisions(newPos)) {
+            // No collision, update position
+            _pos = newPos;
+            _lastValidPosition = newPos;
+            _pColtonPlane->moveForward();
+        } else {
+            // Collision detected, revert to last valid position
+            _pos = _lastValidPosition;
         }
-        else{
-            // Calculate new position
-            glm::vec2 newPos = _pos[_currentVehicle];
-            newPos.x += 0.15f * glm::sin(_direction[_currentVehicle]);
-            newPos.y += 0.15f * glm::cos(_direction[_currentVehicle]);
-            
-            // Check for collisions
-            if(!_checkCollisions(newPos)) {
-                // No collision, update position
-                _pos[_currentVehicle] = newPos;
-                _lastValidPosition = newPos;
-                _pColtonPlane->moveForward();
-            } else {
-                // Collision detected, revert to last valid position
-                _pos[_currentVehicle] = _lastValidPosition;
-            }
 
-            // Check collisions with points
-            for(PointsData& point : _points){
-                float distance = glm::distance(_pos[_currentVehicle], point.position);
-                if(distance<0.5){
-                    point.toBeDeleted = true;
-                }
+        // Check collisions with points
+        for(PointsData& point : _points){
+            float distance = glm::distance(_pos, point.position);
+            if(distance<0.5){
+                point.toBeDeleted = true;
             }
-            // delete points that have been collected
-            _points.erase(
-                    std::remove_if(_points.begin(), _points.end(),
-                                   [](const PointsData& enemy) { return enemy.toBeDeleted; }),
-                    _points.end()
-            );
-            
-            // Update camera position to follow behind plane
-            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
-            // Calculate camera offset based on plane's direction - now offset is in FRONT of plane
-            glm::vec3 offset = glm::vec3(
-                10.0f * glm::sin(_direction[_currentVehicle]), // Removed negative
-                5.0f,                                          // Height stays same
-                10.0f * glm::cos(_direction[_currentVehicle])  // Removed negative
-            );
-            
-            // Set camera position and look at point
-            _pArcBall->setPosition(planePos + offset);
-            _pArcBall->setLookAtPoint(planePos);
-            _pArcBall->setTheta(-_direction[_currentVehicle]); // Removed + pi
-            _pArcBall->recomputeOrientation();
         }
+        // delete points that have been collected
+        _points.erase(
+                std::remove_if(_points.begin(), _points.end(),
+                                [](const PointsData& enemy) { return enemy.toBeDeleted; }),
+                _points.end()
+        );
+        
+        // Update camera position to follow behind plane
+        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
+        // Calculate camera offset based on plane's direction - now offset is in FRONT of plane
+        glm::vec3 offset = glm::vec3(
+            10.0f * glm::sin(_direction), // Removed negative
+            5.0f,                                          // Height stays same
+            10.0f * glm::cos(_direction)  // Removed negative
+        );
+        
+        // Set camera position and look at point
+        _pArcBall->setPosition(planePos + offset);
+        _pArcBall->setLookAtPoint(planePos);
+        _pArcBall->setTheta(-_direction); // Removed + pi
+        _pArcBall->recomputeOrientation();
     }
     if(_keys[GLFW_KEY_S]){
-        if(freeCam){
-            _pFreeCam->moveBackward(_cameraSpeed.x);
+        glm::vec2 newPos = _pos;
+        newPos.x -= 0.15f * glm::sin(_direction);
+        newPos.y -= 0.15f * glm::cos(_direction);
+        
+        if(!_checkCollisions(newPos)) {
+            _pos = newPos;
+            _lastValidPosition = newPos;
+            _pColtonPlane->moveBackward();
+        } else {
+            _pos = _lastValidPosition;
         }
-        else{
-            glm::vec2 newPos = _pos[_currentVehicle];
-            newPos.x -= 0.15f * glm::sin(_direction[_currentVehicle]);
-            newPos.y -= 0.15f * glm::cos(_direction[_currentVehicle]);
-            
-            if(!_checkCollisions(newPos)) {
-                _pos[_currentVehicle] = newPos;
-                _lastValidPosition = newPos;
-                _pColtonPlane->moveBackward();
-            } else {
-                _pos[_currentVehicle] = _lastValidPosition;
-            }
-            
-            // Update camera position to follow behind plane
-            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
-            glm::vec3 offset = glm::vec3(
-                10.0f * glm::sin(_direction[_currentVehicle]),
-                5.0f,
-                10.0f * glm::cos(_direction[_currentVehicle])
-            );
-            
-            _pArcBall->setPosition(planePos + offset);
-            _pArcBall->setLookAtPoint(planePos);
-            _pArcBall->setTheta(-_direction[_currentVehicle]);
-            _pArcBall->recomputeOrientation();
-        }
+        
+        // Update camera position to follow behind plane
+        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
+        glm::vec3 offset = glm::vec3(
+            10.0f * glm::sin(_direction),
+            5.0f,
+            10.0f * glm::cos(_direction)
+        );
+        
+        _pArcBall->setPosition(planePos + offset);
+        _pArcBall->setLookAtPoint(planePos);
+        _pArcBall->setTheta(-_direction);
+        _pArcBall->recomputeOrientation();
     }
 
     //turn when A or D pressed
-    if(!freeCam){
-        if(_keys[GLFW_KEY_A]){
-            _direction[_currentVehicle] += 0.03f;
-            
-            // Update camera when turning
-            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
-            glm::vec3 offset = glm::vec3(
-                10.0f * glm::sin(_direction[_currentVehicle]),
-                5.0f,
-                10.0f * glm::cos(_direction[_currentVehicle])
-            );
-            
-            _pArcBall->setPosition(planePos + offset);
-            _pArcBall->setLookAtPoint(planePos);
-            _pArcBall->setTheta(-_direction[_currentVehicle]);
-            _pArcBall->recomputeOrientation();
-        }
-        if(_keys[GLFW_KEY_D]){
-            _direction[_currentVehicle] -= 0.03f;
-            
-            // Update camera when turning
-            glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
-            glm::vec3 offset = glm::vec3(
-                10.0f * glm::sin(_direction[_currentVehicle]),
-                5.0f,
-                10.0f * glm::cos(_direction[_currentVehicle])
-            );
-            
-            _pArcBall->setPosition(planePos + offset);
-            _pArcBall->setLookAtPoint(planePos);
-            _pArcBall->setTheta(-_direction[_currentVehicle]);
-            _pArcBall->recomputeOrientation();
-        }
+    if(_keys[GLFW_KEY_A]){
+        _direction += 0.03f;
+        
+        // Update camera when turning
+        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
+        glm::vec3 offset = glm::vec3(
+            10.0f * glm::sin(_direction),
+            5.0f,
+            10.0f * glm::cos(_direction)
+        );
+        
+        _pArcBall->setPosition(planePos + offset);
+        _pArcBall->setLookAtPoint(planePos);
+        _pArcBall->setTheta(-_direction);
+        _pArcBall->recomputeOrientation();
     }
+    if(_keys[GLFW_KEY_D]){
+        _direction -= 0.03f;
+        
+        // Update camera when turning
+        glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
+        glm::vec3 offset = glm::vec3(
+            10.0f * glm::sin(_direction),
+            5.0f,
+            10.0f * glm::cos(_direction)
+        );
+        
+        _pArcBall->setPosition(planePos + offset);
+        _pArcBall->setLookAtPoint(planePos);
+        _pArcBall->setTheta(-_direction);
+        _pArcBall->recomputeOrientation();
+    }
+    
 
     // Update point light position to be in front of and above the plane
-    glm::vec3 planePos = glm::vec3(_pos[_currentVehicle].x, 0, _pos[_currentVehicle].y);
+    glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
     glm::vec3 lightOffset = glm::vec3(
-        -3.0f * glm::sin(_direction[_currentVehicle]), // 3 units in front
+        -3.0f * glm::sin(_direction), // 3 units in front
         2.0f,                                          // 2 units above
-        -3.0f * glm::cos(_direction[_currentVehicle])  // 3 units in front
+        -3.0f * glm::cos(_direction)  // 3 units in front
     );
     
     // Update light position uniform
@@ -698,13 +669,13 @@ void A4Engine::_updateScene() {
 
     // Update ghosts only if we're not falling or exploding
     if(!_isFalling && !_isExploding) {
-        _ghostManager->update(0.016f, glm::vec3(_pos[_currentVehicle].x, 
+        _ghostManager->update(0.016f, glm::vec3(_pos.x, 
                                                _currentHeight, 
-                                               _pos[_currentVehicle].y));
+                                               _pos.y));
     }
 }
 
-void A4Engine::run() {
+void FPEngine::run() {
     while(!glfwWindowShouldClose(mpWindow)) {
         glDrawBuffer(GL_BACK);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -714,7 +685,7 @@ void A4Engine::run() {
 
         glViewport(0, 0, framebufferWidth, framebufferHeight);
         glm::mat4 projMtx = glm::perspective(45.0f, (GLfloat)framebufferWidth / (GLfloat)framebufferHeight, 0.001f, 1000.0f);
-        glm::mat4 viewMtx = freeCam ? _pFreeCam->getViewMatrix() : _pArcBall->getViewMatrix();
+        glm::mat4 viewMtx = _pArcBall->getViewMatrix();
 
         // Render skybox first
         _renderSkybox(viewMtx, projMtx);
@@ -733,7 +704,33 @@ void A4Engine::run() {
 //
 // Private Helper FUnctions
 
-GLuint A4Engine::_loadAndRegisterTexture(const char* FILENAME) {
+void FPEngine::_renderFPV(glm::mat4 projMtx) const {
+    glm::vec3 position = glm::vec3(
+        _pos.x + 1.0f * glm::sin(_direction),
+        1.0f,
+        _pos.y + 1.0f * glm::cos(_direction)
+    );
+
+    
+    glm::vec3 forward = glm::vec3(
+        glm::sin(_direction),
+        0.0f,
+        glm::cos(_direction)
+    );
+    
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::mat4 viewMtx = glm::lookAt(position, position + forward, up);
+    projMtx = glm::perspective(glm::radians(65.0f),
+                              (GLfloat)mWindowWidth / ((GLfloat)mWindowHeight), 
+                              0.1f,
+                              1000.0f);
+    
+    _renderScene(viewMtx, projMtx);
+}
+
+
+
+GLuint FPEngine::_loadAndRegisterTexture(const char* FILENAME) {
     // our handle to the GPU
     GLuint textureHandle = 0;
 
@@ -789,35 +786,37 @@ GLuint A4Engine::_loadAndRegisterTexture(const char* FILENAME) {
 //
 // Callbacks
 
-void a4_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods ) {
-    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+void fp_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods ) {
+    auto engine = (FPEngine*) glfwGetWindowUserPointer(window);
 
     // pass the key and action through to the engine
     engine->handleKeyEvent(key, action);
 }
 
-void a4_cursor_callback(GLFWwindow *window, double x, double y ) {
-    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+void fp_cursor_callback(GLFWwindow *window, double x, double y ) {
+    auto engine = (FPEngine*) glfwGetWindowUserPointer(window);
 
     // pass the cursor position through to the engine
     engine->handleCursorPositionEvent(glm::vec2(x, y));
 }
 
-void a4_mouse_button_callback(GLFWwindow *window, int button, int action, int mods ) {
-    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+void fp_mouse_button_callback(GLFWwindow *window, int button, int action, int mods ) {
+    auto engine = (FPEngine*) glfwGetWindowUserPointer(window);
 
     // pass the mouse button and action through to the engine
     engine->handleMouseButtonEvent(button, action);
 }
 
-void a4_scroll_callback(GLFWwindow *window, double xOffset, double yOffset) {
-    auto engine = (A4Engine*) glfwGetWindowUserPointer(window);
+void fp_scroll_callback(GLFWwindow *window, double xOffset, double yOffset) {
+    auto engine = (FPEngine*) glfwGetWindowUserPointer(window);
 
     // pass the scroll offset through to the engine
     engine->handleScrollEvent(glm::vec2(xOffset, yOffset));
 }
 
-void A4Engine::_setupSkybox() {
+
+
+void FPEngine::_setupSkybox() {
     float vertices[] = {
         // positions          // texture coords
         -100.0f,  100.0f, -100.0f,   0.0f, 1.0f,   // back face
@@ -884,7 +883,7 @@ void A4Engine::_setupSkybox() {
     _skyboxShader->setProgramUniform(_skyboxUniformLocations.skyTexture, 0);
 }
 
-void A4Engine::_renderSkybox(const glm::mat4& view, const glm::mat4& projection) const {
+void FPEngine::_renderSkybox(const glm::mat4& view, const glm::mat4& projection) const {
     glDepthFunc(GL_LEQUAL);
     _skyboxShader->useProgram();
     
@@ -902,10 +901,9 @@ void A4Engine::_renderSkybox(const glm::mat4& view, const glm::mat4& projection)
     glDepthFunc(GL_LESS);
 }
 
-bool A4Engine::_checkCollisions(const glm::vec2& newPosition) {
+bool FPEngine::_checkCollisions(const glm::vec2& newPosition) {
     bool collided = CollisionDetector::checkCollision(
         newPosition, 
-        CollisionDetector::getCollisionObjects(), 
         _playerRadius
     );
     

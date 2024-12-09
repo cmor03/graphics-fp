@@ -22,10 +22,10 @@ public:
     void drawPlane( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx );
 
     /// \desc moves the plane forward
-    void moveForward() { /* Implementation can be empty if movement is handled by A4Engine */ }
+    void moveForward() { /* Implementation can be empty if movement is handled by FPEngine */ }
 
     /// \desc moves the plane backward
-    void moveBackward() { /* Implementation can be empty if movement is handled by A4Engine */ }
+    void moveBackward() { /* Implementation can be empty if movement is handled by FPEngine */ }
 
 private:
     /// \desc handle of the shader program to use when drawing the plane

@@ -2,7 +2,6 @@
 #define A4_ENGINE_H
 
 #include <CSCI441/FixedCam.hpp>
-#include <CSCI441/FreeCam.hpp>
 #include <CSCI441/MD5Model.hpp>
 #include <CSCI441/ModelLoader.hpp>
 #include <CSCI441/OpenGLEngine.hpp>
@@ -14,11 +13,11 @@
 #include "ParticleSystem.h"
 
 
-class A4Engine final : public CSCI441::OpenGLEngine {
+class FPEngine final : public CSCI441::OpenGLEngine {
 public:
     //***************************************************************************
     // Engine Interface
-    A4Engine();
+    FPEngine();
 
     void run() final;
 
@@ -92,14 +91,9 @@ private:
 
     /// \desc the arcball camera in our world
     ArcBall* _pArcBall;
-    GLfloat _direction[3];
-    glm::vec2 _pos[3];
-    GLint _currentVehicle;
+    GLfloat _direction;
+    glm::vec2 _pos;
 
-    /// \desc the freecam in our world
-    CSCI441::FreeCam* _pFreeCam;
-    glm::vec2 _cameraSpeed;
-    bool freeCam;
 
     //vehicles
     Plane* _pColtonPlane;
@@ -183,12 +177,10 @@ private:
 
     std::vector<PointsData> _points;
 
-    void _drawTree();
+    void _renderFPV(glm::mat4 projMtx) const;
 
     //***************************************************************************
     // Texture Information
-
-    // TODO #08-START this step has been done for you, but check out how it is implemented
 
     /// \desc total number of textures in our scene
     static constexpr GLuint NUM_TEXTURES = 4;
@@ -269,9 +261,9 @@ private:
     bool _isExploding = false;
 };
 
-void a4_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods );
-void a4_cursor_callback(GLFWwindow *window, double x, double y );
-void a4_mouse_button_callback(GLFWwindow *window, int button, int action, int mods );
-void a4_scroll_callback(GLFWwindow *window, double xOffset, double yOffset);
+void fp_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods );
+void fp_cursor_callback(GLFWwindow *window, double x, double y );
+void fp_mouse_button_callback(GLFWwindow *window, int button, int action, int mods );
+void fp_scroll_callback(GLFWwindow *window, double xOffset, double yOffset);
 
 #endif
