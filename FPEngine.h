@@ -6,7 +6,6 @@
 #include <CSCI441/ModelLoader.hpp>
 #include <CSCI441/OpenGLEngine.hpp>
 #include <CSCI441/ShaderProgram.hpp>
-#include "ArcBall.h"
 #include "Plane.h"
 #include "CollisionDetector.h"
 #include "ParticleSystem.h"
@@ -35,7 +34,7 @@ public:
 
     /// \desc handle any cursor movement events inside the engine
     /// \param currMousePosition the current cursor position
-    void handleCursorPositionEvent(glm::vec2 currMousePosition);
+    void handleCursorPositionEvent(GLFWwindow* window, glm::vec2 currMousePosition);
 
     /// \desc handle any scroll events inside the engine
     /// \param offset the current scroll offset
@@ -88,14 +87,17 @@ private:
     //***************************************************************************
     // Camera Information
 
-    /// \desc the arcball camera in our world
-    ArcBall* _pArcBall;
+    static const GLint WINDOW_HEIGHT = 720;
+    static const GLint WINDOW_WIDTH = 720;
+
     GLfloat _direction;
+    GLfloat _phi;
     glm::vec2 _pos;
 
-
-    //vehicles
-    Plane* _pColtonPlane;
+    //0: normal
+    //1: collided moving x
+    //2: collided moving z
+    GLfloat _lastDir;
 
     GLfloat WORLD_SIZE_X = 60.0f;
     GLfloat WORLD_SIZE_Y = 60.0f;
