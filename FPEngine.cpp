@@ -147,10 +147,10 @@ void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numV
 
     // create our platform
     VertexNormalTextured platformVertices[4] = {
-            { { 0, 1.0f, 0 }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
-            { {  WORLD_SIZE_X*3, 1.0f, 0 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
-            { { 0, 1.0f,  WORLD_SIZE_Y*3}, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
-            { {  WORLD_SIZE_X*3, 1.0f,  WORLD_SIZE_Y*3 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
+            { { -1.5, 1.0f, -1.5 }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
+            { {  WORLD_SIZE_X*3-1.5, 1.0f, -1.5 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
+            { { -1.5, 1.0f,  WORLD_SIZE_Y*3-1.5}, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
+            { {  WORLD_SIZE_X*3-1.5, 1.0f,  WORLD_SIZE_Y*3-1.5 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
     };
 
     GLushort platformIndices[4] = { 0, 1, 2, 3 };
@@ -380,7 +380,7 @@ void FPEngine::_generateEnvironment() {
                 glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
                 glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
                 glm::vec3 color(1,1,1);
-                Ghost ghost = {modelMatrix, color, glm::vec2(i,j),glm::vec2(i,j),glm::vec2(i,j), glm::vec2(i,j), 0.02, 1, false};
+                Ghost ghost = {modelMatrix, color, glm::vec2(i,j),glm::vec2(i,j),glm::vec2(i,j), glm::vec2(i,j), GHOST_SPEED, 1, false};
                 _ghosts.emplace_back(ghost);
             }
         }
@@ -491,11 +491,11 @@ void FPEngine::_updateScene() {
     }
 
 
-    if(_pos.x > WORLD_SIZE_X*3){
-        _pos.x = WORLD_SIZE_X*3;
+    if(_pos.x > WORLD_SIZE_X*3-3.1){
+        _pos.x = WORLD_SIZE_X*3-3;
     }
-    if(_pos.y > WORLD_SIZE_Y*3){
-        _pos.y = WORLD_SIZE_Y*3;
+    if(_pos.y > WORLD_SIZE_Y*3-3.1){
+        _pos.y = WORLD_SIZE_Y*3-3;
     }
     if(_pos.x < 0){
         _pos.x = 0;
@@ -523,7 +523,7 @@ void FPEngine::_updateScene() {
         }
         // Update movement progress
         if (ghost.is_moving) {
-            ghost.progress += ghost.movement_speed;
+            ghost.progress += GHOST_SPEED;
 
             // Interpolate position
             ghost.current_pos = glm::mix(ghost.start_pos, ghost.target_pos, glm::clamp(ghost.progress, 0.0f, 1.0f));
@@ -553,6 +553,27 @@ void FPEngine::_updateScene() {
                 setWindowShouldClose();
             }
         }
+    }
+    // Check collisions with points
+    for(PointsData& point : _points){
+        float distance = glm::distance(_pos, point.position);
+        if(distance<1){
+            point.toBeDeleted = true;
+        }
+    }
+
+    // delete points that have been collected
+    _points.erase(
+            std::remove_if(_points.begin(), _points.end(),
+                           [](const PointsData& point) { return point.toBeDeleted; }),
+            _points.end()
+    );
+
+    //check to see if all points have been collected
+    if(_points.size()==0){
+        fprintf(stdout,"You have collected all of the points, congratulations!");
+        generate_points();
+        GHOST_SPEED += 0.005;
     }
 
     // Rest of update code (movement, ghosts, etc.)
@@ -601,28 +622,7 @@ void FPEngine::_updateScene() {
             }
         }
 
-        // Check collisions with points
-        for(PointsData& point : _points){
-            float distance = glm::distance(_pos, point.position);
-            if(distance<1){
-                point.toBeDeleted = true;
-            }
-        }
 
-        //check to see if all points have been collected
-        if(_points.size()==0){
-            fprintf(stdout,"You have collected all of the points, congratulations!");
-            generate_points();
-        }
-
-
-
-        // delete points that have been collected
-        _points.erase(
-                std::remove_if(_points.begin(), _points.end(),
-                                [](const PointsData& point) { return point.toBeDeleted; }),
-                _points.end()
-        );
     }
     if(_keys[GLFW_KEY_S]){
         glm::vec2 newPos = _pos;
@@ -666,19 +666,6 @@ void FPEngine::_updateScene() {
                 _lastValidPosition = _pos;
             }
         }
-        // Check collisions with points
-        for(PointsData& point : _points){
-            float distance = glm::distance(_pos, point.position);
-            if(distance<1){
-                point.toBeDeleted = true;
-            }
-        }
-        // delete points that have been collected
-        _points.erase(
-                std::remove_if(_points.begin(), _points.end(),
-                                [](const PointsData& point) { return point.toBeDeleted; }),
-                _points.end()
-        );
     }
 
     //turn when A or D pressed
@@ -727,19 +714,7 @@ void FPEngine::_updateScene() {
             }
         }
 
-        // Check collisions with points
-        for(PointsData& point : _points){
-            float distance = glm::distance(_pos, point.position);
-            if(distance<1){
-                point.toBeDeleted = true;
-            }
-        }
-        // delete points that have been collected
-        _points.erase(
-                std::remove_if(_points.begin(), _points.end(),
-                                [](const PointsData& point) { return point.toBeDeleted; }),
-                _points.end()
-        );
+
     }
     if(_keys[GLFW_KEY_D]){
         // Calculate new position
@@ -786,19 +761,7 @@ void FPEngine::_updateScene() {
             }
         }
 
-        // Check collisions with points
-        for(PointsData& point : _points){
-            float distance = glm::distance(_pos, point.position);
-            if(distance<1){
-                point.toBeDeleted = true;
-            }
-        }
-        // delete points that have been collected
-        _points.erase(
-                std::remove_if(_points.begin(), _points.end(),
-                                [](const PointsData& point) { return point.toBeDeleted; }),
-                _points.end()
-        );
+
     }
     
 
@@ -860,15 +823,16 @@ std::vector<glm::vec2> getPossibleMoves(
 
 void FPEngine::generate_points() {
     for(int i=0;i<WORLD_SIZE_X;i++){
+        fprintf(stdout,"\n");
         for(int j=0;j<WORLD_SIZE_Y;j++){
+            fprintf(stdout,"%d",world_matrix[i][j]);
+            glm::mat4 transToSpotMtx = glm::translate( glm::mat4(1.0), glm::vec3(i*3, 0.0f, j*3));
             if(world_matrix[i][j]==0) {
-                glm::mat4 transToSpotMtx = glm::translate(glm::mat4(1.0), glm::vec3(i * 3, 0.0f, j * 3));
-                glm::mat4 transToHeight = glm::translate(glm::mat4(1.0), glm::vec3(0, 1.0f, 0));
+                glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
                 glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
-                glm::vec3 color(1, 1, 1);
-                Ghost ghost = {modelMatrix, color, glm::vec2(i, j), glm::vec2(i, j), glm::vec2(i, j), glm::vec2(i, j),
-                               0.02, 1, false};
-                _ghosts.emplace_back(ghost);
+                glm::vec3 color(1,1,1);
+                PointsData currentPoint  ={modelMatrix, color, glm::vec2(i*3, j*3), false};
+                _points.emplace_back(currentPoint);
             }
         }
 
