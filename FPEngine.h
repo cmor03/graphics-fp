@@ -99,8 +99,10 @@ private:
     //2: collided moving z
     GLfloat _lastDir;
 
-    GLfloat WORLD_SIZE_X = 60.0f;
-    GLfloat WORLD_SIZE_Y = 60.0f;
+    GLfloat WORLD_SIZE_X = 20.0f;
+    GLfloat WORLD_SIZE_Y = 20.0f;
+
+    int NUM_LIVES = 3000;
 
 
     std::vector<std::vector<int>> world_matrix;
@@ -184,6 +186,7 @@ private:
         glm::vec2 current_pos;     // Current interpolated position
         glm::vec2 target_pos;      // Next target point
         glm::vec2 start_pos;
+        glm::vec2 spawn_pos;
         float movement_speed;      // Units per second
         float progress;            // Movement progress [0, 1]
         bool is_moving;
@@ -192,6 +195,7 @@ private:
     std::vector<Ghost> _ghosts;
 
     void _renderFPV(glm::mat4 projMtx) const;
+    void generate_points();
 
     //***************************************************************************
     // Texture Information

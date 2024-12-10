@@ -148,9 +148,9 @@ void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numV
     // create our platform
     VertexNormalTextured platformVertices[4] = {
             { { 0, 1.0f, 0 }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
-            { {  WORLD_SIZE_X, 1.0f, 0 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
-            { { 0, 1.0f,  WORLD_SIZE_Y}, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
-            { {  WORLD_SIZE_X, 1.0f,  WORLD_SIZE_Y }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
+            { {  WORLD_SIZE_X*3, 1.0f, 0 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
+            { { 0, 1.0f,  WORLD_SIZE_Y*3}, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
+            { {  WORLD_SIZE_X*3, 1.0f,  WORLD_SIZE_Y*3 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
     };
 
     GLushort platformIndices[4] = { 0, 1, 2, 3 };
@@ -380,7 +380,7 @@ void FPEngine::_generateEnvironment() {
                 glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
                 glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
                 glm::vec3 color(1,1,1);
-                Ghost ghost = {modelMatrix, color, glm::vec2(i,j),glm::vec2(i,j),glm::vec2(i,j), 0.02, 1, false};
+                Ghost ghost = {modelMatrix, color, glm::vec2(i,j),glm::vec2(i,j),glm::vec2(i,j), glm::vec2(i,j), 0.02, 1, false};
                 _ghosts.emplace_back(ghost);
             }
         }
@@ -587,10 +587,35 @@ void FPEngine::_updateScene() {
         // Check collisions with points
         for(PointsData& point : _points){
             float distance = glm::distance(_pos, point.position);
-            if(distance<0.5){
+            if(distance<1){
                 point.toBeDeleted = true;
             }
         }
+
+        //check to see if all points have been collected
+        if(_points.size()==0){
+            fprintf(stdout,"You have collected all of the points, congratulations!");
+            generate_points();
+        }
+
+        //check collisions with ghosts
+        for(Ghost& ghost : _ghosts){
+            float distance = glm::distance(_pos,glm::vec2(ghost.current_pos.x*3, ghost.current_pos.y*3));
+            if(distance<1.2){
+                NUM_LIVES-=1;
+                ghost.current_pos=ghost.spawn_pos;
+                ghost.start_pos=ghost.spawn_pos;
+                ghost.target_pos = ghost.spawn_pos;
+
+                fprintf(stdout,"You have been hit by a ghost, %d lives remaining\n",NUM_LIVES);
+
+                if(NUM_LIVES<=0){
+                    fprintf(stdout,"You have lost all of your lives, you lose.\n");
+                    setWindowShouldClose();
+                }
+            }
+        }
+
         // delete points that have been collected
         _points.erase(
                 std::remove_if(_points.begin(), _points.end(),
@@ -643,7 +668,7 @@ void FPEngine::_updateScene() {
         // Check collisions with points
         for(PointsData& point : _points){
             float distance = glm::distance(_pos, point.position);
-            if(distance<0.5){
+            if(distance<1){
                 point.toBeDeleted = true;
             }
         }
@@ -704,7 +729,7 @@ void FPEngine::_updateScene() {
         // Check collisions with points
         for(PointsData& point : _points){
             float distance = glm::distance(_pos, point.position);
-            if(distance<0.5){
+            if(distance<1){
                 point.toBeDeleted = true;
             }
         }
@@ -763,7 +788,7 @@ void FPEngine::_updateScene() {
         // Check collisions with points
         for(PointsData& point : _points){
             float distance = glm::distance(_pos, point.position);
-            if(distance<0.5){
+            if(distance<1){
                 point.toBeDeleted = true;
             }
         }
@@ -830,6 +855,23 @@ std::vector<glm::vec2> getPossibleMoves(
     }
 
     return actually_possible_moves;
+}
+
+void FPEngine::generate_points() {
+    for(int i=0;i<WORLD_SIZE_X;i++){
+        for(int j=0;j<WORLD_SIZE_Y;j++){
+            if(world_matrix[i][j]==0) {
+                glm::mat4 transToSpotMtx = glm::translate(glm::mat4(1.0), glm::vec3(i * 3, 0.0f, j * 3));
+                glm::mat4 transToHeight = glm::translate(glm::mat4(1.0), glm::vec3(0, 1.0f, 0));
+                glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
+                glm::vec3 color(1, 1, 1);
+                Ghost ghost = {modelMatrix, color, glm::vec2(i, j), glm::vec2(i, j), glm::vec2(i, j), glm::vec2(i, j),
+                               0.02, 1, false};
+                _ghosts.emplace_back(ghost);
+            }
+        }
+
+    }
 }
 
 void FPEngine::run() {
