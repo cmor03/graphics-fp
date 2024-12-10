@@ -70,7 +70,6 @@ void FPEngine::handleCursorPositionEvent(GLFWwindow* window, glm::vec2 currMouse
     _phi += (_mousePosition.y - currMousePosition.y) * 0.005;
     // update the mouse position
     _mousePosition = currMousePosition;
-    // glfwSetCursorPos(window,  WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 }
 
 void FPEngine::handleScrollEvent(glm::vec2 offset) {
@@ -105,7 +104,7 @@ void FPEngine::mSetupOpenGL() {
 }
 
 void FPEngine::mSetupShaders() {
-    _shaderProgram = new CSCI441::ShaderProgram("shaders/mp.v.glsl", "shaders/mp.f.glsl" );
+    _shaderProgram = new CSCI441::ShaderProgram("shaders/fp.v.glsl", "shaders/fp.f.glsl" );
     // query uniform locations
     _shaderUniformLocations.mvpMatrix      = _shaderProgram->getUniformLocation("mvpMatrix");
     _shaderUniformLocations.lightDirection      = _shaderProgram->getUniformLocation("lightDirection");
