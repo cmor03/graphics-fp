@@ -450,14 +450,14 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
 }
 
 void FPEngine::_updateScene() {
-//    // Handle ghost collision explosion
-//    if(GhostManager::hasCollided() && !_isExploding) {
-//        _isExploding = true;
-//        _particleSystem->spawn(glm::vec3(_pos.x,
-//                                        _currentHeight,
-//                                        _pos.y));
-//        return;
-//    }
+    // Handle ghost collision explosion
+    if(NUM_LIVES<=0 && !_isExploding) {
+        _isExploding = true;
+        _particleSystem->spawn(glm::vec3(_pos.x,
+                                        _currentHeight,
+                                        _pos.y));
+        return;
+    }
     
     // Handle explosion animation and reset
     if(_isExploding) {
@@ -469,26 +469,12 @@ void FPEngine::_updateScene() {
             _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
             _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
+            NUM_LIVES = 3;
+            generate_points();
         }
         return;
     }
 
-    // Handle falling state
-    if(_isFalling) {
-        _currentHeight -= FALL_SPEED * 0.016f;
-        _fallTime += 0.016f;
-        
-        if(_fallTime >= MAX_FALL_TIME) {
-            // Reset everything
-            _isFalling = false;
-            _fallTime = 0.0f;
-            _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
-            _direction = 0.0f;
-            _currentHeight = _spawnPosition.y;
-            return;
-        }
-        return;  // Skip other updates while falling
-    }
 
 
     if(_pos.x > WORLD_SIZE_X*3-3.1){
@@ -548,11 +534,12 @@ void FPEngine::_updateScene() {
 
             fprintf(stdout,"You have been hit by a ghost, %d lives remaining\n",NUM_LIVES);
 
-            if(NUM_LIVES<=0){
-                fprintf(stdout,"You have lost all of your lives, you lose.\n");
-                setWindowShouldClose();
-            }
         }
+    }
+
+    if(NUM_LIVES<=0){
+        fprintf(stdout,"You have lost all of your lives, you lose.\n");
+        //_isExploding = true;
     }
     // Check collisions with points
     for(PointsData& point : _points){
@@ -766,7 +753,7 @@ void FPEngine::_updateScene() {
     
 
     // Update point light position to be in front of and above the plane
-    glm::vec3 planePos = glm::vec3(_pos.x, 0, _pos.y);
+    glm::vec3 planePos = glm::vec3(_pos.x+1.5, 0, _pos.y+3);
     glm::vec3 lightOffset = glm::vec3(
         -3.0f * glm::sin(_direction), // 3 units in front
         2.0f,                                          // 2 units above
@@ -822,6 +809,7 @@ std::vector<glm::vec2> getPossibleMoves(
 }
 
 void FPEngine::generate_points() {
+    _points.clear();
     for(int i=0;i<WORLD_SIZE_X;i++){
         fprintf(stdout,"\n");
         for(int j=0;j<WORLD_SIZE_Y;j++){

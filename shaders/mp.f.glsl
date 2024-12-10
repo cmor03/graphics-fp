@@ -53,6 +53,6 @@ void main() {
 
 
     // Combine
-    vec3 result = ambientReflection * materialColor + (directionalDiffuse + directionalSpecular) + attenuation * (pointDiffuse + pointSpecular);
+    vec3 result = ambientReflection * materialColor + 0.005*(directionalDiffuse + directionalSpecular) + attenuation * 5*(pointDiffuse + pointSpecular);
     fragColorOut = vec4(result, 1.0);
 }
