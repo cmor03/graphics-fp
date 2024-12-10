@@ -141,12 +141,6 @@ private:
     /// \param [out] numVAOPoints sets the number of vertices that make up the IBO array
     void _createQuad(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const;
 
-    /// \desc holds our suzanne model object
-    CSCI441::ModelLoader* _pObjModel;
-
-    /// \desc holds our hellknight object
-    CSCI441::MD5Model* _pHellknight;
-
     /// \desc tracks which object we want to be viewing
     GLuint _objectIndex;
     /// \desc the current angle of rotation to display our object at
@@ -201,13 +195,11 @@ private:
     // Texture Information
 
     /// \desc total number of textures in our scene
-    static constexpr GLuint NUM_TEXTURES = 4;
+    static constexpr GLuint NUM_TEXTURES = 2;
     /// \desc used to index through our texture array to give named access
     enum TEXTURE_ID {
         GROUND = 0,
-        TREE = 1,
-        BUILDING = 2,
-        LEAVES = 3
+        BUILDING = 1,
     };
     /// \desc texture handles for our textures
     GLuint _texHandles[NUM_TEXTURES];
