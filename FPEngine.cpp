@@ -537,6 +537,23 @@ void FPEngine::_updateScene() {
             }
         }
     }
+    //check collisions with ghosts
+    for(Ghost& ghost : _ghosts){
+        float distance = glm::distance(_pos,glm::vec2(ghost.current_pos.x*3, ghost.current_pos.y*3));
+        if(distance<1.2){
+            NUM_LIVES-=1;
+            ghost.current_pos=ghost.spawn_pos;
+            ghost.start_pos=ghost.spawn_pos;
+            ghost.target_pos = ghost.spawn_pos;
+
+            fprintf(stdout,"You have been hit by a ghost, %d lives remaining\n",NUM_LIVES);
+
+            if(NUM_LIVES<=0){
+                fprintf(stdout,"You have lost all of your lives, you lose.\n");
+                setWindowShouldClose();
+            }
+        }
+    }
 
     // Rest of update code (movement, ghosts, etc.)
     if(_keys[GLFW_KEY_W]) {
@@ -598,23 +615,7 @@ void FPEngine::_updateScene() {
             generate_points();
         }
 
-        //check collisions with ghosts
-        for(Ghost& ghost : _ghosts){
-            float distance = glm::distance(_pos,glm::vec2(ghost.current_pos.x*3, ghost.current_pos.y*3));
-            if(distance<1.2){
-                NUM_LIVES-=1;
-                ghost.current_pos=ghost.spawn_pos;
-                ghost.start_pos=ghost.spawn_pos;
-                ghost.target_pos = ghost.spawn_pos;
 
-                fprintf(stdout,"You have been hit by a ghost, %d lives remaining\n",NUM_LIVES);
-
-                if(NUM_LIVES<=0){
-                    fprintf(stdout,"You have lost all of your lives, you lose.\n");
-                    setWindowShouldClose();
-                }
-            }
-        }
 
         // delete points that have been collected
         _points.erase(
