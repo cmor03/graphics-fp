@@ -68,6 +68,12 @@ void FPEngine::handleCursorPositionEvent(GLFWwindow* window, glm::vec2 currMouse
 
     _direction += (_mousePosition.x - currMousePosition.x) * 0.005;
     _phi += (_mousePosition.y - currMousePosition.y) * 0.005;
+    if (_phi > M_PI/2 - 0.001){
+        _phi = M_PI/2 - 0.001;
+    }
+    if (_phi < -M_PI/2 + 0.001){
+        _phi = -M_PI/2 + 0.001;
+    }
     // update the mouse position
     _mousePosition = currMousePosition;
 }
@@ -147,9 +153,9 @@ void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numV
     // create our platform
     VertexNormalTextured platformVertices[4] = {
             { { -1.5, 1.0f, -1.5 }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
-            { {  WORLD_SIZE_X*3-1.5, 1.0f, -1.5 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
-            { { -1.5, 1.0f,  WORLD_SIZE_Y*3-1.5}, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
-            { {  WORLD_SIZE_X*3-1.5, 1.0f,  WORLD_SIZE_Y*3-1.5 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
+            { {  WORLD_SIZE_X*3-1.5, 1.0f, -1.5 }, { 0.0f, 1.0f, 0.0f }, { 10.0f, 0.0f } }, // 1 - BR
+            { { -1.5, 1.0f,  WORLD_SIZE_Y*3-1.5}, { 0.0f, 1.0f, 0.0f }, { 0.0f, 10.0f } }, // 2 - TL
+            { {  WORLD_SIZE_X*3-1.5, 1.0f,  WORLD_SIZE_Y*3-1.5 }, { 0.0f, 1.0f, 0.0f }, { 10.0f, 10.0f } }  // 3 - TR
     };
 
     GLushort platformIndices[4] = { 0, 1, 2, 3 };
@@ -216,10 +222,8 @@ void FPEngine::_createQuad(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPo
 }
 
 void FPEngine::mSetupTextures() {
-    _texHandles[TEXTURE_ID::GROUND] = _loadAndRegisterTexture("assets/textures/ground.png");
-    _texHandles[TEXTURE_ID::TREE] = _loadAndRegisterTexture("assets/textures/tree.png");
-    _texHandles[TEXTURE_ID::BUILDING] = _loadAndRegisterTexture("assets/textures/building.png");
-    _texHandles[TEXTURE_ID::LEAVES] = _loadAndRegisterTexture("assets/textures/leaves.png");
+    _texHandles[TEXTURE_ID::GROUND] = _loadAndRegisterTexture("assets/textures/dirt.png");
+    _texHandles[TEXTURE_ID::BUILDING] = _loadAndRegisterTexture("assets/textures/wall.jpg");
 
     _skyTexture = _loadAndRegisterTexture("assets/textures/skybox.png");
     fprintf(stdout, "[INFO]: Skybox texture handle: %d\n", _skyTexture);
@@ -278,8 +282,6 @@ void FPEngine::mCleanupBuffers() {
     glDeleteBuffers( NUM_VAOS, _ibos );
 
     fprintf( stdout, "[INFO]: ...deleting models..\n" );
-    delete _pObjModel;
-    delete _pHellknight;
 }
 
 void FPEngine::mCleanupTextures() {
@@ -838,14 +840,14 @@ void FPEngine::run() {
 
         glm::mat4 projMtx = glm::perspective(30.0f, (GLfloat)framebufferWidth / (GLfloat)framebufferHeight, 0.001f, 1000.0f);
         glm::vec3 position = glm::vec3(
-            _pos.x + 0.5f * glm::sin(_direction),
+            _pos.x,
             1.5f,
-            _pos.y + 0.5f * glm::cos(_direction)
+            _pos.y
         );
         glm::vec3 forward = glm::vec3(
-            glm::sin(_direction),
+            glm::cos(_phi) * glm::sin(_direction),
             glm::sin(_phi),
-            glm::cos(_direction)
+            glm::cos(_phi) * glm::cos(_direction)
         );
 
         glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
