@@ -47,12 +47,12 @@ void main() {
 
     // Attenuation for Point Light
     float distance = length(pointLightPosition - fragPos);
-    float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * distance * distance);
+    float attenuation = 1.0 / (1.0 + 0.1 * distance);
 
 
 
 
     // Combine
-    vec3 result = ambientReflection * materialColor + 0.005*(directionalDiffuse + directionalSpecular) + attenuation * 5*(pointDiffuse + pointSpecular);
+    vec3 result = ambientReflection * materialColor + 0.1*(directionalDiffuse + directionalSpecular) + attenuation * 9*(pointDiffuse + pointSpecular);
     fragColorOut = vec4(result, 1.0);
 }

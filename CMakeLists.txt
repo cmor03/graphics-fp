@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(FinalProject)
 set(CMAKE_CXX_STANDARD 17)
-set(SOURCE_FILES main.cpp FPEngine.cpp FPEngine.h ArcBall.cpp ArcBall.h Plane.cpp Plane.h CollisionDetector.cpp CollisionDetector.h ParticleSystem.cpp ParticleSystem.h)
+set(SOURCE_FILES main.cpp FPEngine.cpp FPEngine.h Plane.cpp Plane.h CollisionDetector.cpp CollisionDetector.h ParticleSystem.cpp ParticleSystem.h)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
