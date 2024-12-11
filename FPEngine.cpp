@@ -248,6 +248,7 @@ void FPEngine::mSetupTextures() {
     _texHandles[TEXTURE_ID::GROUND] = _loadAndRegisterTexture("assets/textures/dirt.png");
     _texHandles[TEXTURE_ID::BUILDING] = _loadAndRegisterTexture("assets/textures/wall.jpg");
     _texHandles[TEXTURE_ID::GHOST] = _loadAndRegisterTexture("assets/textures/ghost.jpeg");
+    _texHandles[TEXTURE_ID::LAVA] = _loadAndRegisterTexture("assets/textures/lava.jpg");
     
     _skyTexture = _loadAndRegisterTexture("assets/textures/skybox.png");
     fprintf(stdout, "[INFO]: Skybox texture handle: %d\n", _skyTexture);
@@ -462,6 +463,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
         shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
         CSCI441::drawSolidCubeTextured(1.0);
     }
+    glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::LAVA]);
     for( const PointsData& currentPoint : _points){
 
         mvpMtx = projMtx * viewMtx * currentPoint.modelMatrix;
