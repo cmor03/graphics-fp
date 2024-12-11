@@ -15,6 +15,11 @@ layout(location = 3) in vec3 color;
 // Fragment Output
 out vec4 fragColorOut;
 
+// Random function for fun effects
+float rand(vec2 co) {
+    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main() {
     // Get texture color including alpha
     vec4 texColor = texture(textureMap, texCoord);
@@ -32,15 +37,18 @@ void main() {
         materialColor = texColor.rgb;  // Use RGB from texture
     }
 
+    // Add a bit of randomness to the color for fun
+    materialColor *= vec3(rand(texCoord * 10.0), rand(texCoord * 20.0), rand(texCoord * 30.0));
+
     // Directional Light
     vec3 directionalNormalizedLightDirection = normalize(-lightDirection);
     float diff = max(dot(fragNormal, directionalNormalizedLightDirection), 0.0);
-    vec3 directionalDiffuse = directionalLightColor * diff * materialColor;
+    vec3 directionalDiffuse = directionalLightColor * diff * materialColor * 2.0; // Exaggerate for fun
 
     // Specular for Directional Light
     vec3 viewDir = normalize(viewVector - fragPos);
     vec3 reflectDir = reflect(-directionalNormalizedLightDirection, fragNormal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 2.0);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 4.0); // Make it shinier
     vec3 directionalSpecular = directionalLightColor * spec * materialColor;
 
     // Point Light
@@ -50,17 +58,19 @@ void main() {
 
     // Specular for Point Light
     vec3 pointReflectDir = reflect(-pointLightDir, fragNormal);
-    float pointSpec = pow(max(dot(viewDir, pointReflectDir), 0.0), 2.0);
+    float pointSpec = pow(max(dot(viewDir, pointReflectDir), 0.0), 4.0);
     vec3 pointSpecular = pointLightColor * pointSpec * materialColor;
 
     // Attenuation for Point Light
     float distance = length(pointLightPosition - fragPos);
-    float attenuation = 1.0 / (1.0 + 0.1 * distance);
+    float attenuation = 1.0 / (1.0 + 0.05 * distance * distance); // Over-the-top attenuation
 
-
-
+    // Sparkle effect
+    float sparkle = step(0.95, rand(texCoord * 50.0)) * 0.8; // Random sparkles
 
     // Combine
-    vec3 result = ambientReflection * materialColor + 0.1*(directionalDiffuse + directionalSpecular) + attenuation * 9*(pointDiffuse + pointSpecular);
+    vec3 result = ambientReflection * materialColor + 0.2 * (directionalDiffuse + directionalSpecular) + attenuation * 8.0 * (pointDiffuse + pointSpecular);
+    result += vec3(sparkle); // Add sparkles
+
     fragColorOut = vec4(result, texColor.a);
 }

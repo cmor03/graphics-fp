@@ -32,6 +32,7 @@ FPEngine::FPEngine()
     _pos = glm::vec2(0,0);
     _playerRadius = 0.5f;
     _lastDir = 0;
+    _hitTimer = 0;
 }
 GLfloat getRand() {
     return (GLfloat)rand() / (GLfloat)RAND_MAX;
@@ -111,6 +112,8 @@ void FPEngine::mSetupOpenGL() {
 
 void FPEngine::mSetupShaders() {
     _shaderProgram = new CSCI441::ShaderProgram("shaders/fp.v.glsl", "shaders/fp.f.glsl" );
+    _slenderShaderProgram = new CSCI441::ShaderProgram("shaders/slendershader.v.glsl", "shaders/slendershader.f.glsl" );
+
     // query uniform locations
     _shaderUniformLocations.mvpMatrix      = _shaderProgram->getUniformLocation("mvpMatrix");
     _shaderUniformLocations.lightDirection      = _shaderProgram->getUniformLocation("lightDirection");
@@ -395,7 +398,12 @@ void FPEngine::_generateEnvironment() {
 
 void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     // use our lighting shader program
-    _shaderProgram->useProgram();
+    if(_hitTimer>0){
+        _slenderShaderProgram->useProgram();
+    }
+    else {
+        _shaderProgram->useProgram();
+    }
     glm::vec3 defaultColor = glm::vec3(-1,-1,-1);
     glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(), _shaderUniformLocations.materialColor, 1, glm::value_ptr(defaultColor));
     glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.1f, 0.0f));
@@ -458,6 +466,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
 }
 
 void FPEngine::_updateScene() {
+    if(_hitTimer>0){_hitTimer--;}
     // Handle ghost collision explosion
     if(NUM_LIVES<=0 && !_isExploding) {
         _isExploding = true;
@@ -541,7 +550,7 @@ void FPEngine::_updateScene() {
             ghost.target_pos = ghost.spawn_pos;
 
             fprintf(stdout,"You have been hit by a ghost, %d lives remaining\n",NUM_LIVES);
-
+            _hitTimer = 120;
         }
     }
 

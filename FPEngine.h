@@ -94,6 +94,8 @@ private:
     GLfloat _phi;
     glm::vec2 _pos;
 
+    float _hitTimer;
+
     //0: normal
     //1: collided moving x
     //2: collided moving z
@@ -217,6 +219,7 @@ private:
 
     /// \desc shader program that performs texturing
     CSCI441::ShaderProgram* _shaderProgram;
+    CSCI441::ShaderProgram* _slenderShaderProgram;
     /// \desc stores the locations of all of our shader uniforms
     struct TextureShaderUniformLocations {
         /// \desc precomputed MVP matrix location
