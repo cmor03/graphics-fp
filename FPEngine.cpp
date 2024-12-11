@@ -21,7 +21,7 @@ static const GLfloat GLM_2PI = glm::two_pi<float>();
 // Public Interface
 
 FPEngine::FPEngine()
-     : CSCI441::OpenGLEngine(4, 1, WINDOW_WIDTH, WINDOW_HEIGHT, "FP - Obama Chase") {
+     : CSCI441::OpenGLEngine(4, 1, WINDOW_WIDTH, WINDOW_HEIGHT, "FP") {
 
     for(auto& _key : _keys) _key = GL_FALSE;
 

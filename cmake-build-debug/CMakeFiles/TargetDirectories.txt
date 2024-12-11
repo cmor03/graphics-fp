@@ -1,3 +1,3 @@
-/Users/coltonmorris/Documents/Mines/Mines_Classes/Fall24/Computer Graphics/graphics-fp/cmake-build-debug/CMakeFiles/FinalProject.dir
-/Users/coltonmorris/Documents/Mines/Mines_Classes/Fall24/Computer Graphics/graphics-fp/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/coltonmorris/Documents/Mines/Mines_Classes/Fall24/Computer Graphics/graphics-fp/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/coltonmorris/Desktop/fughg/graphics-fp/cmake-build-debug/CMakeFiles/FinalProject.dir
+/Users/coltonmorris/Desktop/fughg/graphics-fp/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/coltonmorris/Desktop/fughg/graphics-fp/cmake-build-debug/CMakeFiles/rebuild_cache.dir

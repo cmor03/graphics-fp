@@ -1,4 +1,4 @@
-# Install script for directory: /Users/coltonmorris/Documents/Mines/Mines_Classes/Fall24/Computer Graphics/graphics-fp
+# Install script for directory: /Users/coltonmorris/Desktop/fughg/graphics-fp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/coltonmorris/Documents/Mines/Mines_Classes/Fall24/Computer Graphics/graphics-fp/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/coltonmorris/Desktop/fughg/graphics-fp/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
