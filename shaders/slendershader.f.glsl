@@ -15,7 +15,7 @@ layout(location = 3) in vec3 color;
 // Fragment Output
 out vec4 fragColorOut;
 
-// Random function for fun effects
+// Random function
 float rand(vec2 co) {
     return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -29,15 +29,15 @@ void main() {
         discard;
     }
 
-    vec3 ambientReflection = vec3(0.1);  // Some small ambient light
+    vec3 ambientReflection = vec3(0.1);
 
     // Material color
     vec3 materialColor = color;
     if (color.x == -1) {
-        materialColor = texColor.rgb;  // Use RGB from texture
+        materialColor = texColor.rgb;
     }
 
-    // Add a bit of randomness to the color for fun
+    // Add a bit of randomness to the color
     materialColor *= vec3(rand(texCoord * 10.0), rand(texCoord * 20.0), rand(texCoord * 30.0));
 
     // Directional Light
@@ -63,14 +63,14 @@ void main() {
 
     // Attenuation for Point Light
     float distance = length(pointLightPosition - fragPos);
-    float attenuation = 1.0 / (1.0 + 0.05 * distance * distance); // Over-the-top attenuation
+    float attenuation = 1.0 / (1.0 + 0.05 * distance * distance); 
 
     // Sparkle effect
-    float sparkle = step(0.95, rand(texCoord * 50.0)) * 0.8; // Random sparkles
+    float sparkle = step(0.95, rand(texCoord * 50.0)) * 0.8;
 
     // Combine
     vec3 result = ambientReflection * materialColor + 0.2 * (directionalDiffuse + directionalSpecular) + attenuation * 8.0 * (pointDiffuse + pointSpecular);
-    result += vec3(sparkle); // Add sparkles
+    result += vec3(sparkle);
 
     fragColorOut = vec4(result, texColor.a);
 }

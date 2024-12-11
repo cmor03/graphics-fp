@@ -130,7 +130,7 @@ void FPEngine::mSetupShaders() {
     _shaderAttributeLocations.normalVec      = _shaderProgram->getAttributeLocation("normalVec");
     _shaderAttributeLocations.inTexCoord      = _shaderProgram->getAttributeLocation("inTexCoord");
 
-    // query uniform locations
+    // query uniform locations for slender shader separately because linux and mac compiler doesnt optimize and store them at the same location
     _slenderShaderUniformLocations.mvpMatrix      = _slenderShaderProgram->getUniformLocation("mvpMatrix");
     _slenderShaderUniformLocations.lightDirection      = _slenderShaderProgram->getUniformLocation("lightDirection");
     _slenderShaderUniformLocations.directionalLightColor      = _slenderShaderProgram->getUniformLocation("directionalLightColor");
@@ -421,11 +421,12 @@ void FPEngine::_generateEnvironment() {
 // Rendering / Drawing Functions - this is where the magic happens!
 
 void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
-    // use our lighting shader program
+    // shader uniforms and attribues
     CSCI441::ShaderProgram* shader;
     TextureShaderUniformLocations uniforms;
     TextureShaderAttributeLocations attributes;
 
+    //set shader program, uniforms and attributes based on whether we are using the glitched or normal shader
     if(_hitTimer>0){
         shader = _slenderShaderProgram;
         uniforms = _slenderShaderUniformLocations;
@@ -448,8 +449,6 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     shader->setProgramUniform(uniforms.normalMatrix, normalMatrix);
 
 
-
-    // TODO #20 - bind texture
     glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::GROUND]);
 
     glBindVertexArray( _vaos[VAO_ID::PLATFORM] );
@@ -493,8 +492,6 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     mvpMtx = projMtx * viewMtx * modelMatrix;
     shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
 
-    // TODO #21 - bind texture
-
     glBindTexture(GL_TEXTURE_2D, 0);
     if(_isExploding) {
         _particleSystem->draw(viewMtx, projMtx);
@@ -507,6 +504,8 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
 }
 
 void FPEngine::_updateScene() {
+
+    //set shader program, uniforms and attributes based on whether we are using the glitched or normal shader
     CSCI441::ShaderProgram* shader;
     TextureShaderUniformLocations uniforms;
     TextureShaderAttributeLocations attributes;
