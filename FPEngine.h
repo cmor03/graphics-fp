@@ -103,8 +103,8 @@ private:
     //2: collided moving z
     GLfloat _lastDir;
 
-    GLfloat WORLD_SIZE_X = 20.0f;
-    GLfloat WORLD_SIZE_Y = 20.0f;
+    GLfloat WORLD_SIZE_X = 15.0f;
+    GLfloat WORLD_SIZE_Y = 15.0f;
 
     int NUM_LIVES = 3000;
     float GHOST_SPEED = 0.015;
