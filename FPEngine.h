@@ -1,7 +1,6 @@
 #ifndef A4_ENGINE_H
 #define A4_ENGINE_H
 
-#include <CSCI441/FixedCam.hpp>
 #include <CSCI441/MD5Model.hpp>
 #include <CSCI441/ModelLoader.hpp>
 #include <CSCI441/OpenGLEngine.hpp>

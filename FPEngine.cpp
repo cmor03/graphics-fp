@@ -29,7 +29,7 @@ FPEngine::FPEngine()
     _leftMouseButtonState = GLFW_RELEASE;
     _direction = 0;
     _phi = 0;
-    _pos = glm::vec2(0,0);
+    _pos = glm::vec2(3,3);
     _playerRadius = 0.5f;
     _lastDir = 0;
     _hitTimer = 0;
