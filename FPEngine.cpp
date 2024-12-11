@@ -130,6 +130,21 @@ void FPEngine::mSetupShaders() {
     _shaderAttributeLocations.normalVec      = _shaderProgram->getAttributeLocation("normalVec");
     _shaderAttributeLocations.inTexCoord      = _shaderProgram->getAttributeLocation("inTexCoord");
 
+    // query uniform locations
+    _slenderShaderUniformLocations.mvpMatrix      = _slenderShaderProgram->getUniformLocation("mvpMatrix");
+    _slenderShaderUniformLocations.lightDirection      = _slenderShaderProgram->getUniformLocation("lightDirection");
+    _slenderShaderUniformLocations.directionalLightColor      = _slenderShaderProgram->getUniformLocation("directionalLightColor");
+    _slenderShaderUniformLocations.pointLightPosition      = _slenderShaderProgram->getUniformLocation("pointLightPosition");
+    _slenderShaderUniformLocations.pointLightColor      = _slenderShaderProgram->getUniformLocation("pointLightColor");
+    _slenderShaderUniformLocations.materialColor      = _slenderShaderProgram->getUniformLocation("materialColor");
+    _slenderShaderUniformLocations.normalMatrix      = _slenderShaderProgram->getUniformLocation("normalMatrix");
+    _slenderShaderUniformLocations.viewVector      = _slenderShaderProgram->getUniformLocation("viewVector");
+    _slenderShaderUniformLocations.textureMap      = _slenderShaderProgram->getUniformLocation("textureMap");
+    _slenderShaderUniformLocations.time      = _slenderShaderProgram->getUniformLocation("time");
+
+    _slenderShaderAttributeLocations.vPos         = _slenderShaderProgram->getAttributeLocation("vPos");
+    _slenderShaderAttributeLocations.normalVec      = _slenderShaderProgram->getAttributeLocation("normalVec");
+    _slenderShaderAttributeLocations.inTexCoord      = _slenderShaderProgram->getAttributeLocation("inTexCoord");
 
     _shaderProgram->setProgramUniform("textureMap", 0);
 
@@ -407,20 +422,30 @@ void FPEngine::_generateEnvironment() {
 
 void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     // use our lighting shader program
+    CSCI441::ShaderProgram* shader;
+    TextureShaderUniformLocations uniforms;
+    TextureShaderAttributeLocations attributes;
+
     if(_hitTimer>0){
-        _slenderShaderProgram->useProgram();
-        glProgramUniform1f(_shaderProgram->getShaderProgramHandle(),_shaderUniformLocations.time,_hitTimer);
+        shader = _slenderShaderProgram;
+        uniforms = _slenderShaderUniformLocations;
+        attributes = _slenderShaderAttributeLocations;
+        glProgramUniform1f(_slenderShaderProgram->getShaderProgramHandle(),_shaderUniformLocations.time,_hitTimer);
     }
     else {
-        _shaderProgram->useProgram();
+        shader = _shaderProgram;
+        uniforms = _shaderUniformLocations;
+        attributes = _shaderAttributeLocations;
     }
+    shader->useProgram();
+
     glm::vec3 defaultColor = glm::vec3(-1,-1,-1);
-    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(), _shaderUniformLocations.materialColor, 1, glm::value_ptr(defaultColor));
+    glProgramUniform3fv(shader->getShaderProgramHandle(), uniforms.materialColor, 1, glm::value_ptr(defaultColor));
     glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.1f, 0.0f));
     glm::mat4 mvpMtx = projMtx * viewMtx * modelMatrix;
-    _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+    shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
     glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
-    _shaderProgram->setProgramUniform(_shaderUniformLocations.normalMatrix, normalMatrix);
+    shader->setProgramUniform(uniforms.normalMatrix, normalMatrix);
 
 
 
@@ -434,13 +459,13 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     for( const BuildingData& currentBuilding : _buildings ) {
         glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::BUILDING]);
         mvpMtx = projMtx * viewMtx * currentBuilding.modelMatrix;
-        _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+        shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
         CSCI441::drawSolidCubeTextured(1.0);
     }
     for( const PointsData& currentPoint : _points){
 
         mvpMtx = projMtx * viewMtx * currentPoint.modelMatrix;
-        _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+        shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
         CSCI441::drawSolidSphere(0.2,8,8);
     }
 
@@ -451,9 +476,9 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
         
         // Set uniforms
         glm::mat4 mvpMtx = projMtx * viewMtx * billboardModel;
-        _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+        shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(billboardModel)));
-        _shaderProgram->setProgramUniform(_shaderUniformLocations.normalMatrix, normalMatrix);
+        shader->setProgramUniform(uniforms.normalMatrix, normalMatrix);
         
         // Bind ghost texture
         glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::GHOST]);
@@ -466,7 +491,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.1f, 0.0f));
     modelMatrix = glm::rotate( modelMatrix, _objectAngle, CSCI441::Y_AXIS );
     mvpMtx = projMtx * viewMtx * modelMatrix;
-    _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
+    shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
 
     // TODO #21 - bind texture
 
@@ -482,7 +507,21 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
 }
 
 void FPEngine::_updateScene() {
-    if(_hitTimer>0){_hitTimer--;}
+    CSCI441::ShaderProgram* shader;
+    TextureShaderUniformLocations uniforms;
+    TextureShaderAttributeLocations attributes;
+    if(_hitTimer>0){
+        shader = _slenderShaderProgram;
+        uniforms = _slenderShaderUniformLocations;
+        attributes = _slenderShaderAttributeLocations;
+        glProgramUniform1f(_slenderShaderProgram->getShaderProgramHandle(),_shaderUniformLocations.time,_hitTimer);
+        _hitTimer--;
+    }
+    else {
+        shader = _shaderProgram;
+        uniforms = _shaderUniformLocations;
+        attributes = _shaderAttributeLocations;
+    }
     // Handle ghost collision explosion
     if(NUM_LIVES<=0 && !_isExploding) {
         _isExploding = true;
@@ -795,8 +834,8 @@ void FPEngine::_updateScene() {
     
     // Update light position uniform
     glm::vec3 pointLightPosition = planePos + lightOffset;
-    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
-        _shaderUniformLocations.pointLightPosition,
+    glProgramUniform3fv(shader->getShaderProgramHandle(),
+        uniforms.pointLightPosition,
         1,
         glm::value_ptr(pointLightPosition));
 
@@ -807,8 +846,8 @@ void FPEngine::_updateScene() {
     } else {
         pointLightColor = glm::vec3(0.2f, 0.2f, 0.2f); // Dimmer white when stationary
     }
-    glProgramUniform3fv(_shaderProgram->getShaderProgramHandle(),
-        _shaderUniformLocations.pointLightColor,
+    glProgramUniform3fv(shader->getShaderProgramHandle(),
+        uniforms.pointLightColor,
         1,
         glm::value_ptr(pointLightColor));
 
