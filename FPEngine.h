@@ -7,6 +7,7 @@
 #include <CSCI441/OpenGLEngine.hpp>
 #include <CSCI441/ShaderProgram.hpp>
 #include "Plane.h"
+#include "Car.h"
 #include "CollisionDetector.h"
 #include "ParticleSystem.h"
 
@@ -93,6 +94,7 @@ private:
     GLfloat _direction;
     GLfloat _phi;
     glm::vec2 _pos;
+    Plane* _pGavinCar;
 
     float _hitTimer;
 
@@ -104,7 +106,7 @@ private:
     GLfloat WORLD_SIZE_X = 20.0f;
     GLfloat WORLD_SIZE_Y = 20.0f;
 
-    int NUM_LIVES = 3;
+    int NUM_LIVES = 3000;
     float GHOST_SPEED = 0.015;
 
     std::vector<std::vector<int>> world_matrix;

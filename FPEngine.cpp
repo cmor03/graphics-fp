@@ -144,6 +144,11 @@ void FPEngine::mSetupBuffers() {
     _createPlatform(_vaos[VAO_ID::PLATFORM], _vbos[VAO_ID::PLATFORM], _ibos[VAO_ID::PLATFORM], _numVAOPoints[VAO_ID::PLATFORM]);
     _generateEnvironment();
     _createQuad(_vaos[VAO_ID::QUAD], _vbos[VAO_ID::QUAD], _ibos[VAO_ID::QUAD], _numVAOPoints[VAO_ID::QUAD]);
+
+    _pGavinCar = new Plane(_shaderProgram->getShaderProgramHandle(),
+                         _shaderUniformLocations.mvpMatrix,
+                         _shaderUniformLocations.normalMatrix,
+                          _shaderUniformLocations.materialColor);
 }
 
 void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
@@ -305,6 +310,7 @@ void FPEngine::mCleanupScene() {
     glDeleteTextures(1, &_skyTexture);
 
     delete _particleSystem;
+    delete _pGavinCar;
 }
 
 
@@ -412,6 +418,8 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
     _shaderProgram->setProgramUniform(_shaderUniformLocations.normalMatrix, normalMatrix);
 
+
+
     // TODO #20 - bind texture
     glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::GROUND]);
 
@@ -462,6 +470,10 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     if(_isExploding) {
         _particleSystem->draw(viewMtx, projMtx);
     }
+    modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(0, 0, 0));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(1.f));
+    _pGavinCar->drawPlane(modelMatrix, viewMtx, projMtx);
 
 }
 
