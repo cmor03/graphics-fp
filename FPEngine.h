@@ -104,7 +104,7 @@ private:
     GLfloat WORLD_SIZE_Y = 15.0f;
 
     int NUM_LIVES = 5;
-    float GHOST_SPEED = 0.015;
+    float GHOST_SPEED = 0.0125;
 
     std::vector<std::vector<int>> world_matrix;
     //***************************************************************************

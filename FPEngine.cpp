@@ -21,7 +21,7 @@ static const GLfloat GLM_2PI = glm::two_pi<float>();
 // Public Interface
 
 FPEngine::FPEngine()
-     : CSCI441::OpenGLEngine(4, 1, WINDOW_WIDTH, WINDOW_HEIGHT, "A4") {
+     : CSCI441::OpenGLEngine(4, 1, WINDOW_WIDTH, WINDOW_HEIGHT, "FP - Obama Chase") {
 
     for(auto& _key : _keys) _key = GL_FALSE;
 
@@ -661,7 +661,7 @@ void FPEngine::_updateScene() {
     }
 
 
-    float speed = 0.1f;
+    float speed = 0.15f;
 
     // Rest of update code (movement, ghosts, etc.)
     if(_keys[GLFW_KEY_W]) {
