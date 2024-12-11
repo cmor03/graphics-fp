@@ -195,11 +195,12 @@ private:
     // Texture Information
 
     /// \desc total number of textures in our scene
-    static constexpr GLuint NUM_TEXTURES = 2;
+    static constexpr GLuint NUM_TEXTURES = 3;
     /// \desc used to index through our texture array to give named access
     enum TEXTURE_ID {
         GROUND = 0,
         BUILDING = 1,
+        GHOST = 2,
     };
     /// \desc texture handles for our textures
     GLuint _texHandles[NUM_TEXTURES];
@@ -271,6 +272,8 @@ private:
     bool _isExploding = false;
 
     glm::vec2 findBestMove(std::vector<std::vector<int>> vector1, glm::vec2 vec1, glm::vec2 vec2);
+
+    glm::mat4 _createBillboardMatrix(const glm::vec3& position, const glm::mat4& viewMatrix) const;
 };
 
 void fp_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods );

@@ -16,12 +16,20 @@ layout(location = 3) in vec3 color;
 out vec4 fragColorOut;
 
 void main() {
+    // Get texture color including alpha
+    vec4 texColor = texture(textureMap, texCoord);
+    
+    // Discard fragments with low alpha
+    if(texColor.a < 0.1) {
+        discard;
+    }
+    
     vec3 ambientReflection = vec3(0.1);  // Some small ambient light
 
     // Material color
     vec3 materialColor = color;
     if (color.x == -1) {
-        materialColor = vec3(texture(textureMap, texCoord));
+        materialColor = texColor.rgb;  // Use RGB from texture
     }
 
     // Directional Light
@@ -54,5 +62,5 @@ void main() {
 
     // Combine
     vec3 result = ambientReflection * materialColor + 0.1*(directionalDiffuse + directionalSpecular) + attenuation * 9*(pointDiffuse + pointSpecular);
-    fragColorOut = vec4(result, 1.0);
+    fragColorOut = vec4(result, texColor.a);
 }

@@ -184,47 +184,48 @@ void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numV
 }
 
 void FPEngine::_createQuad(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
+    struct VertexNormalTextured {
+        glm::vec3 position;
+        glm::vec3 normal;
+        glm::vec2 texCoord;
+    };
 
-   struct VertexNormalTextured {
-       glm::vec3 position;
-       glm::vec3 normal;
-       glm::vec2 texCoord;
-   };
+    // Modified UV coordinates to map to entire texture (changed from 3.0 to 1.0)
+    VertexNormalTextured quadVertices[4] = {
+        { { -2.5f, -2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
+        { {  2.5f, -2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f } }, // 1 - BR
+        { { -2.5f,  2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } }, // 2 - TL
+        { {  2.5f,  2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }  // 3 - TR
+    };
 
-   VertexNormalTextured quadVertices[4] = {
-           { { -2.5f, -2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } }, // 0 - BL
-           { {  2.5f, -2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 3.0f, 0.0f } }, // 1 - BR
-           { { -2.5f,  2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 3.0f } }, // 2 - TL
-           { {  2.5f,  2.5f,  0.0f }, { 0.0f, 1.0f, 0.0f }, { 3.0f, 3.0f } }  // 3 - TR
-   };
+    GLushort quadIndices[4] = { 0, 1, 2, 3 };
+    numVAOPoints = 4;
 
-   GLushort quadIndices[4] = { 0, 1, 2, 3 };
-   numVAOPoints = 4;
+    glBindVertexArray( vao );
 
-   glBindVertexArray( vao );
+    glBindBuffer( GL_ARRAY_BUFFER, vbo );
+    glBufferData( GL_ARRAY_BUFFER, sizeof( quadVertices ), quadVertices, GL_STATIC_DRAW );
 
-   glBindBuffer( GL_ARRAY_BUFFER, vbo );
-   glBufferData( GL_ARRAY_BUFFER, sizeof( quadVertices ), quadVertices, GL_STATIC_DRAW );
+    glEnableVertexAttribArray( _shaderAttributeLocations.vPos );
+    glVertexAttribPointer( _shaderAttributeLocations.vPos, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)nullptr );
 
-   glEnableVertexAttribArray( _shaderAttributeLocations.vPos );
-   glVertexAttribPointer( _shaderAttributeLocations.vPos, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)nullptr );
+    glEnableVertexAttribArray( _shaderAttributeLocations.normalVec);
+    glVertexAttribPointer( _shaderAttributeLocations.normalVec, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(sizeof(glm::vec3)) );
 
-   glEnableVertexAttribArray( _shaderAttributeLocations.normalVec);
-   glVertexAttribPointer( _shaderAttributeLocations.normalVec, 3, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(sizeof(glm::vec3)) );
+    glEnableVertexAttribArray( _shaderAttributeLocations.inTexCoord );
+    glVertexAttribPointer( _shaderAttributeLocations.inTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(2*sizeof(glm::vec3)) );
 
-   glEnableVertexAttribArray( _shaderAttributeLocations.inTexCoord );
-   glVertexAttribPointer( _shaderAttributeLocations.inTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(VertexNormalTextured), (void*)(2*sizeof(glm::vec3)) );
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( quadIndices ), quadIndices, GL_STATIC_DRAW );
 
-   glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo );
-   glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( quadIndices ), quadIndices, GL_STATIC_DRAW );
-
-   fprintf( stdout, "[INFO]: quad read in with VAO/VBO/IBO %d/%d/%d & %d points\n", vao, vbo, ibo, numVAOPoints );
+    fprintf( stdout, "[INFO]: quad read in with VAO/VBO/IBO %d/%d/%d & %d points\n", vao, vbo, ibo, numVAOPoints );
 }
 
 void FPEngine::mSetupTextures() {
     _texHandles[TEXTURE_ID::GROUND] = _loadAndRegisterTexture("assets/textures/dirt.png");
     _texHandles[TEXTURE_ID::BUILDING] = _loadAndRegisterTexture("assets/textures/wall.jpg");
-
+    _texHandles[TEXTURE_ID::GHOST] = _loadAndRegisterTexture("assets/textures/ghost.jpeg");
+    
     _skyTexture = _loadAndRegisterTexture("assets/textures/skybox.png");
     fprintf(stdout, "[INFO]: Skybox texture handle: %d\n", _skyTexture);
 }
@@ -424,16 +425,22 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     }
 
     for (const Ghost& ghost : _ghosts) {
-        glm::mat4 transToSpotMtx = glm::translate(glm::mat4(1.0), glm::vec3(ghost.current_pos.x*3, 0.0f, ghost.current_pos.y*3));
-        glm::mat4 transToHeight = glm::translate(glm::mat4(1.0), glm::vec3(0, 1.0f, 0));
-        glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
-
-        // Calculate the correct MVP matrix
-        glm::mat4 mvpMtx = projMtx * viewMtx * modelMatrix;
+        // Calculate billboard matrix
+        glm::vec3 ghostPos = glm::vec3(ghost.current_pos.x*3, 1.0f, ghost.current_pos.y*3);
+        glm::mat4 billboardModel = _createBillboardMatrix(ghostPos, viewMtx);
+        
+        // Set uniforms
+        glm::mat4 mvpMtx = projMtx * viewMtx * billboardModel;
         _shaderProgram->setProgramUniform(_shaderUniformLocations.mvpMatrix, mvpMtx);
-
-        // Draw the ghost
-        CSCI441::drawSolidCube(1);
+        glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(billboardModel)));
+        _shaderProgram->setProgramUniform(_shaderUniformLocations.normalMatrix, normalMatrix);
+        
+        // Bind ghost texture
+        glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::GHOST]);
+        
+        // Draw billboard quad
+        glBindVertexArray(_vaos[VAO_ID::QUAD]);
+        glDrawElements(GL_TRIANGLE_STRIP, _numVAOPoints[VAO_ID::QUAD], GL_UNSIGNED_SHORT, (void*)nullptr);
     }
 
     modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.1f, 0.0f));
@@ -911,45 +918,38 @@ GLuint FPEngine::_loadAndRegisterTexture(const char* FILENAME) {
     // will hold image parameters after load
     GLint imageWidth, imageHeight, imageChannels;
     // load image from file
-    GLubyte* data = stbi_load( FILENAME, &imageWidth, &imageHeight, &imageChannels, 0);
+    GLubyte* data = stbi_load(FILENAME, &imageWidth, &imageHeight, &imageChannels, 0);
 
     // if data was read from file
-    if( data ) {
+    if(data) {
         const GLint STORAGE_TYPE = (imageChannels == 4 ? GL_RGBA : GL_RGB);
 
-        // TODO #01 - generate a texture handle
         glGenTextures(1, &textureHandle);
-
-        // TODO #02 - bind it to be active
         glBindTexture(GL_TEXTURE_2D, textureHandle);
 
-        // set texture parameters
-        // TODO #03 - mag filter
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // Check if this is the ghost texture
+        if(std::string(FILENAME).find("ghost.jpeg") != std::string::npos) {
+            // Special settings for ghost texture
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        } else {
+            // Default settings for other textures
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        }
 
-        // TODO #04 - min filter
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-
-        // TODO #05 - wrap s
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-
-        // TODO #06 - wrap t
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        // TODO #07 - transfer image data to the GPU
         glTexImage2D(GL_TEXTURE_2D, 0, STORAGE_TYPE, imageWidth, imageHeight, 0, STORAGE_TYPE, GL_UNSIGNED_BYTE, data);
 
-        fprintf( stdout, "[INFO]: %s texture map read in with handle %d\n", FILENAME, textureHandle);
-
-        // release image memory from CPU - it now lives on the GPU
+        fprintf(stdout, "[INFO]: %s texture map read in with handle %d\n", FILENAME, textureHandle);
         stbi_image_free(data);
     } else {
-        // load failed
-        fprintf( stderr, "[ERROR]: Could not load texture map \"%s\"\n", FILENAME );
+        fprintf(stderr, "[ERROR]: Could not load texture map \"%s\"\n", FILENAME);
     }
 
-    // return generated texture handle
     return textureHandle;
 }
 
@@ -1112,5 +1112,23 @@ glm::vec2 FPEngine::findBestMove(std::vector<std::vector<int>> world_matrix, glm
         }
     }
     return target;
+}
+
+glm::mat4 FPEngine::_createBillboardMatrix(const glm::vec3& position, const glm::mat4& viewMatrix) const {
+    // Extract camera right and up vectors from view matrix
+    glm::vec3 right = glm::vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+    glm::vec3 up = glm::vec3(0, 1, 0);
+    
+    // Scale for the billboard size - reduced from 2.0f to 1.0f
+    const float BILLBOARD_SIZE = 1.0f;
+    
+    // Create billboard model matrix
+    glm::mat4 billboardModel = glm::mat4(1.0f);
+    billboardModel[0] = glm::vec4(right * BILLBOARD_SIZE, 0.0f);
+    billboardModel[1] = glm::vec4(up * BILLBOARD_SIZE, 0.0f);
+    billboardModel[2] = glm::vec4(glm::cross(right, up) * BILLBOARD_SIZE, 0.0f);
+    billboardModel[3] = glm::vec4(position, 1.0f);
+    
+    return billboardModel;
 }
 
