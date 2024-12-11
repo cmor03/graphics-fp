@@ -130,7 +130,7 @@ void FPEngine::mSetupShaders() {
     _shaderAttributeLocations.normalVec      = _shaderProgram->getAttributeLocation("normalVec");
     _shaderAttributeLocations.inTexCoord      = _shaderProgram->getAttributeLocation("inTexCoord");
 
-    // query uniform locations
+    // query uniform locations for slender shader separately because linux and mac compiler doesnt optimize and store them at the same location
     _slenderShaderUniformLocations.mvpMatrix      = _slenderShaderProgram->getUniformLocation("mvpMatrix");
     _slenderShaderUniformLocations.lightDirection      = _slenderShaderProgram->getUniformLocation("lightDirection");
     _slenderShaderUniformLocations.directionalLightColor      = _slenderShaderProgram->getUniformLocation("directionalLightColor");
@@ -155,6 +155,7 @@ void FPEngine::mSetupShaders() {
 }
 
 void FPEngine::mSetupBuffers() {
+
     glGenVertexArrays( NUM_VAOS, _vaos );
     glGenBuffers( NUM_VAOS, _vbos );
     glGenBuffers( NUM_VAOS, _ibos );
@@ -163,10 +164,6 @@ void FPEngine::mSetupBuffers() {
     _generateEnvironment();
     _createQuad(_vaos[VAO_ID::QUAD], _vbos[VAO_ID::QUAD], _ibos[VAO_ID::QUAD], _numVAOPoints[VAO_ID::QUAD]);
 
-    _pGavinCar = new Plane(_shaderProgram->getShaderProgramHandle(),
-                         _shaderUniformLocations.mvpMatrix,
-                         _shaderUniformLocations.normalMatrix,
-                          _shaderUniformLocations.materialColor);
 }
 
 void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
@@ -285,6 +282,11 @@ void FPEngine::mSetupScene() {
     _particleSystem = new ParticleSystem(_shaderProgram->getShaderProgramHandle(),
                                        _shaderUniformLocations.mvpMatrix,
                                        _shaderUniformLocations.materialColor);
+
+    _staticCar = new Car(_shaderProgram->getShaderProgramHandle(),
+                         _shaderUniformLocations.mvpMatrix,
+                         _shaderUniformLocations.normalMatrix,
+                         _shaderUniformLocations.materialColor);
 }
 
 //*************************************************************************************
@@ -328,7 +330,7 @@ void FPEngine::mCleanupScene() {
     glDeleteTextures(1, &_skyTexture);
 
     delete _particleSystem;
-    delete _pGavinCar;
+    delete _staticCar;
 }
 
 
@@ -421,11 +423,12 @@ void FPEngine::_generateEnvironment() {
 // Rendering / Drawing Functions - this is where the magic happens!
 
 void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
-    // use our lighting shader program
+    // shader uniforms and attribues
     CSCI441::ShaderProgram* shader;
     TextureShaderUniformLocations uniforms;
     TextureShaderAttributeLocations attributes;
 
+    //set shader program, uniforms and attributes based on whether we are using the glitched or normal shader
     if(_hitTimer>0){
         shader = _slenderShaderProgram;
         uniforms = _slenderShaderUniformLocations;
@@ -448,8 +451,6 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     shader->setProgramUniform(uniforms.normalMatrix, normalMatrix);
 
 
-
-    // TODO #20 - bind texture
     glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::GROUND]);
 
     glBindVertexArray( _vaos[VAO_ID::PLATFORM] );
@@ -493,8 +494,6 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     mvpMtx = projMtx * viewMtx * modelMatrix;
     shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
 
-    // TODO #21 - bind texture
-
     glBindTexture(GL_TEXTURE_2D, 0);
     if(_isExploding) {
         _particleSystem->draw(viewMtx, projMtx);
@@ -502,11 +501,16 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(0, 0, 0));
     modelMatrix = glm::scale(modelMatrix, glm::vec3(1.f));
-    _pGavinCar->drawPlane(modelMatrix, viewMtx, projMtx);
 
+    // Draw static car
+    glm::mat4 carModelMatrix = glm::translate(glm::mat4(1.0f), 
+        glm::vec3(8 * 3.0f, 0.0f, 17 * 3.0f)); // Position where '3' is in world.csv (8,17)
+    _staticCar->drawCar(carModelMatrix, viewMtx, projMtx);
 }
 
 void FPEngine::_updateScene() {
+
+    //set shader program, uniforms and attributes based on whether we are using the glitched or normal shader
     CSCI441::ShaderProgram* shader;
     TextureShaderUniformLocations uniforms;
     TextureShaderAttributeLocations attributes;
