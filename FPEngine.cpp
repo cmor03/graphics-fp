@@ -251,9 +251,10 @@ void FPEngine::mSetupTextures() {
     _texHandles[TEXTURE_ID::BUILDING] = _loadAndRegisterTexture("assets/textures/wall.jpg");
     _texHandles[TEXTURE_ID::GHOST] = _loadAndRegisterTexture("assets/textures/ghost.jpeg");
     _texHandles[TEXTURE_ID::LAVA] = _loadAndRegisterTexture("assets/textures/lava.jpg");
+    _texHandles[TEXTURE_ID::BLOOD] = _loadAndRegisterTexture("assets/textures/blood.jpg");
+    _texHandles[TEXTURE_ID::SKY] = _loadAndRegisterTexture("assets/textures/skybox.png");
     
-    _skyTexture = _loadAndRegisterTexture("assets/textures/skybox.png");
-    fprintf(stdout, "[INFO]: Skybox texture handle: %d\n", _skyTexture);
+    fprintf(stdout, "[INFO]: Skybox texture handle: %d\n", _texHandles[TEXTURE_ID::SKY]);
 }
 
 void FPEngine::mSetupScene() {
@@ -324,7 +325,7 @@ void FPEngine::mCleanupScene() {
     delete _skyboxShader;
     glDeleteVertexArrays(1, &_skyboxVAO);
     glDeleteBuffers(1, &_skyboxVBO);
-    glDeleteTextures(1, &_skyTexture);
+    glDeleteTextures(1, &_texHandles[TEXTURE_ID::SKY]);
 
     delete _particleSystem;
     for(CarData& carData : _carData) {
@@ -510,7 +511,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     mvpMtx = projMtx * viewMtx * modelMatrix;
     shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::SKY]);
     if(_isExploding) {
         _particleSystem->draw(viewMtx, projMtx);
     }
@@ -1172,7 +1173,7 @@ void FPEngine::_renderSkybox(const glm::mat4& view, const glm::mat4& projection)
     _skyboxShader->setProgramUniform(_skyboxUniformLocations.projection, projection);
     
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _skyTexture);
+    glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::SKY]);
     
     glBindVertexArray(_skyboxVAO);
     glDrawArrays(GL_TRIANGLES, 0, 36);

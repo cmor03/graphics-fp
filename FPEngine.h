@@ -196,13 +196,15 @@ private:
     // Texture Information
 
     /// \desc total number of textures in our scene
-    static constexpr GLuint NUM_TEXTURES = 4;
+    static constexpr GLuint NUM_TEXTURES = 6;
     /// \desc used to index through our texture array to give named access
     enum TEXTURE_ID {
         GROUND = 0,
         BUILDING = 1,
         GHOST = 2,
         LAVA = 3,
+        BLOOD = 4,
+        SKY = 5
     };
     /// \desc texture handles for our textures
     GLuint _texHandles[NUM_TEXTURES];
