@@ -130,7 +130,7 @@ void FPEngine::mSetupShaders() {
     _shaderAttributeLocations.normalVec      = _shaderProgram->getAttributeLocation("normalVec");
     _shaderAttributeLocations.inTexCoord      = _shaderProgram->getAttributeLocation("inTexCoord");
 
-    // query uniform locations for slender shader separately because linux and mac compiler doesnt optimize and store them at the same location
+    // query uniform locations for slender shader separately because linux and mac compiler doesnt optimize and store them at the same location like windows
     _slenderShaderUniformLocations.mvpMatrix      = _slenderShaderProgram->getUniformLocation("mvpMatrix");
     _slenderShaderUniformLocations.lightDirection      = _slenderShaderProgram->getUniformLocation("lightDirection");
     _slenderShaderUniformLocations.directionalLightColor      = _slenderShaderProgram->getUniformLocation("directionalLightColor");
@@ -455,7 +455,6 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
 
     glBindVertexArray( _vaos[VAO_ID::PLATFORM] );
     glDrawElements( GL_TRIANGLE_STRIP, _numVAOPoints[VAO_ID::PLATFORM], GL_UNSIGNED_SHORT, (void*)nullptr );
-
 
     for( const BuildingData& currentBuilding : _buildings ) {
         glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::BUILDING]);
