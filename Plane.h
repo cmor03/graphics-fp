@@ -111,6 +111,7 @@ private:
     float _internalTimer;
     const float _rumbleSpeed = 10.0f;
     const float _rumbleAmount = 0.02f;
+    const float _spinSpeed = 1.0f;  // One full rotation per second
 };
 
 

@@ -24,11 +24,12 @@ Plane::Plane( GLuint shaderProgramHandle, GLint mvpMtxUniformLocation, GLint nor
 }
 
 void Plane::drawPlane( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx ) {
-
     _internalTimer += 0.016f;
     if (_internalTimer >= _2PI) {
         _internalTimer -= _2PI;
     }
+
+    modelMtx = glm::rotate(modelMtx, _internalTimer * _spinSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
 
     modelMtx = glm::rotate(modelMtx, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -59,7 +60,6 @@ void Plane::drawPlane( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx 
         }
     }
 
-    // Draw windshield and rear window
     glProgramUniform3fv(_shaderProgramHandle, _shaderProgramUniformLocations.materialColor, 1, glm::value_ptr(_colorWindows));
     for (int i = -1; i <= 1; i += 2) {
         glm::mat4 windowMtx = glm::translate(modelMtx, glm::vec3(i * 0.7f, 0.3f, 0.0f));
@@ -69,7 +69,6 @@ void Plane::drawPlane( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx 
         CSCI441::drawSolidCube(1.0f);
     }
 
-    // Draw headlights and taillights
     glProgramUniform3fv(_shaderProgramHandle, _shaderProgramUniformLocations.materialColor, 1, glm::value_ptr(_colorLights));
     for (int i = -1; i <= 1; i += 2) {
         for (int j = -1; j <= 1; j += 2) {
@@ -82,9 +81,7 @@ void Plane::drawPlane( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx 
 }
 
 void Plane::_computeAndSendMatrixUniforms(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx) const {
-    // precompute the Model-View-Projection matrix on the CPU
     glm::mat4 mvpMtx = projMtx * viewMtx * modelMtx;
-    // then send it to the shader on the GPU to apply to every vertex
     glProgramUniformMatrix4fv( _shaderProgramHandle, _shaderProgramUniformLocations.mvpMtx, 1, GL_FALSE, glm::value_ptr(mvpMtx) );
 
     glm::mat3 normalMtx = glm::mat3( glm::transpose( glm::inverse( modelMtx )));
