@@ -155,6 +155,7 @@ void FPEngine::mSetupShaders() {
 }
 
 void FPEngine::mSetupBuffers() {
+
     glGenVertexArrays( NUM_VAOS, _vaos );
     glGenBuffers( NUM_VAOS, _vbos );
     glGenBuffers( NUM_VAOS, _ibos );
@@ -163,10 +164,6 @@ void FPEngine::mSetupBuffers() {
     _generateEnvironment();
     _createQuad(_vaos[VAO_ID::QUAD], _vbos[VAO_ID::QUAD], _ibos[VAO_ID::QUAD], _numVAOPoints[VAO_ID::QUAD]);
 
-    _pGavinCar = new Plane(_shaderProgram->getShaderProgramHandle(),
-                         _shaderUniformLocations.mvpMatrix,
-                         _shaderUniformLocations.normalMatrix,
-                          _shaderUniformLocations.materialColor);
 }
 
 void FPEngine::_createPlatform(GLuint vao, GLuint vbo, GLuint ibo, GLsizei &numVAOPoints) const {
@@ -285,6 +282,11 @@ void FPEngine::mSetupScene() {
     _particleSystem = new ParticleSystem(_shaderProgram->getShaderProgramHandle(),
                                        _shaderUniformLocations.mvpMatrix,
                                        _shaderUniformLocations.materialColor);
+
+    _staticCar = new Car(_shaderProgram->getShaderProgramHandle(),
+                         _shaderUniformLocations.mvpMatrix,
+                         _shaderUniformLocations.normalMatrix,
+                         _shaderUniformLocations.materialColor);
 }
 
 //*************************************************************************************
@@ -328,7 +330,7 @@ void FPEngine::mCleanupScene() {
     glDeleteTextures(1, &_skyTexture);
 
     delete _particleSystem;
-    delete _pGavinCar;
+    delete _staticCar;
 }
 
 
@@ -499,8 +501,11 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(0, 0, 0));
     modelMatrix = glm::scale(modelMatrix, glm::vec3(1.f));
-    _pGavinCar->drawPlane(modelMatrix, viewMtx, projMtx);
 
+    // Draw static car
+    glm::mat4 carModelMatrix = glm::translate(glm::mat4(1.0f), 
+        glm::vec3(8 * 3.0f, 0.0f, 17 * 3.0f)); // Position where '3' is in world.csv (8,17)
+    _staticCar->drawCar(carModelMatrix, viewMtx, projMtx);
 }
 
 void FPEngine::_updateScene() {

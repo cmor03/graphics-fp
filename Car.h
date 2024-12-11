@@ -23,11 +23,6 @@ public:
     /// for the MVP and Normal Matrices as well as the material diffuse color
     void drawCar( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx );
 
-    /// \desc simulates the plane flying forward by rotating the propeller clockwise
-    void driveForward();
-    /// \desc simulates the plane flying backward by rotating the propeller counter-clockwise
-    void driveBackward();
-
 private:
     /// \desc current angle of rotation for the propeller
     GLfloat _propAngle;

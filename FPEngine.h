@@ -6,10 +6,9 @@
 #include <CSCI441/ModelLoader.hpp>
 #include <CSCI441/OpenGLEngine.hpp>
 #include <CSCI441/ShaderProgram.hpp>
-#include "Plane.h"
-#include "Car.h"
 #include "CollisionDetector.h"
 #include "ParticleSystem.h"
+#include "Car.h"
 
 
 class FPEngine final : public CSCI441::OpenGLEngine {
@@ -94,7 +93,6 @@ private:
     GLfloat _direction;
     GLfloat _phi;
     glm::vec2 _pos;
-    Plane* _pGavinCar;
 
     float _hitTimer;
 
@@ -282,6 +280,8 @@ private:
     glm::vec2 findBestMove(std::vector<std::vector<int>> vector1, glm::vec2 vec1, glm::vec2 vec2);
 
     glm::mat4 _createBillboardMatrix(const glm::vec3& position, const glm::mat4& viewMatrix) const;
+
+    Car* _staticCar;
 };
 
 void fp_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods );

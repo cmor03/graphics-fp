@@ -8,7 +8,7 @@
 
 Car::Car( GLuint shaderProgramHandle, GLint mvpMtxUniformLocation, GLint normalMtxUniformLocation, GLint materialColorUniformLocation ) {
     _propAngle = 0.0f;
-    _propAngleRotationSpeed = _PI / 16.0f;
+    _propAngleRotationSpeed = 0.0f;
 
     _shaderProgramHandle                            = shaderProgramHandle;
     _shaderProgramUniformLocations.mvpMtx           = mvpMtxUniformLocation;
@@ -17,21 +17,21 @@ Car::Car( GLuint shaderProgramHandle, GLint mvpMtxUniformLocation, GLint normalM
 
     _rotateCarAngle = _PI / 2.0f;
 
-    _colorBody = glm::vec3( 0.0f, 0.0f, 1.0f );
-    _scaleBody = glm::vec3( 2.0f, 0.5f, 1.0f );
+    _colorBody = glm::vec3(0.8f, 0.1f, 0.1f);
+    _scaleBody = glm::vec3(2.0f, 0.5f, 1.0f);
 
-    _colorWing = glm::vec3( 1.0f, 0.0f, 0.0f );
-    _scaleWing = glm::vec3( 1.5f, 0.5f, 1.0f );
+    _colorWing = glm::vec3(0.2f, 0.2f, 0.2f);
+    _scaleWing = glm::vec3(1.5f, 0.5f, 1.0f);
     _rotateWingAngle = _PI / 2.0f;
 
-    _colorNose = glm::vec3( 0.0f, 1.0f, 0.0f );
+    _colorNose = glm::vec3(0.8f, 0.1f, 0.1f);
     _rotateNoseAngle = _PI / 2.0f;
 
-    _colorProp = glm::vec3( 1.0f, 1.0f, 1.0f );
-    _scaleProp = glm::vec3( 1.1f, 1.0f, 0.025f );
-    _transProp = glm::vec3( 0.1f, 0.0f, 0.0f );
+    _colorProp = glm::vec3(0.2f, 0.2f, 0.2f);
+    _scaleProp = glm::vec3(1.1f, 1.0f, 0.025f);
+    _transProp = glm::vec3(0.1f, 0.0f, 0.0f);
 
-    _colorTail = glm::vec3( 1.0f, 1.0f, 0.0f );
+    _colorTail = glm::vec3(0.2f, 0.2f, 0.2f);
 }
 
 void Car::drawCar( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx ) {
@@ -46,16 +46,6 @@ void Car::drawCar( glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx ) {
     _drawCarWheel(wheelMtx, viewMtx, projMtx);
     wheelMtx = glm::translate( wheelMtx, -_transProp-_transProp );
     _drawCarWheel(wheelMtx, viewMtx, projMtx);
-}
-
-void Car::driveForward() {
-    _propAngle += _propAngleRotationSpeed;
-    if( _propAngle > _2PI ) _propAngle -= _2PI;
-}
-
-void Car::driveBackward() {
-    _propAngle -= _propAngleRotationSpeed;
-    if( _propAngle < 0.0f ) _propAngle += _2PI;
 }
 
 void Car::_drawCarBody(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx ) const {
@@ -104,9 +94,8 @@ void Car::_drawCarWheel(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx
 }
 
 void Car::_computeAndSendMatrixUniforms(glm::mat4 modelMtx, glm::mat4 viewMtx, glm::mat4 projMtx) const {
-    // precompute the Model-View-Projection matrix on the CPU
+
     glm::mat4 mvpMtx = projMtx * viewMtx * modelMtx;
-    // then send it to the shader on the GPU to apply to every vertex
     glProgramUniformMatrix4fv( _shaderProgramHandle, _shaderProgramUniformLocations.mvpMtx, 1, GL_FALSE, glm::value_ptr(mvpMtx) );
 
     glm::mat3 normalMtx = glm::mat3( glm::transpose( glm::inverse( modelMtx )));
