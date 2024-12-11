@@ -4,7 +4,7 @@
 uniform mat4 mvpMatrix;
 uniform mat3 normalMatrix;
 uniform vec3 materialColor;
-uniform float time;
+uniform int time;
 
 layout(location = 0) in vec3 vPos;
 layout(location = 1) in vec2 inTexCoord;
@@ -18,7 +18,7 @@ layout(location = 3) out vec3 color;
 
 // Wacky Wave Function
 float wave(vec3 pos, float time) {
-    return sin(pos.x * 10.0 + time) * 0.2 + cos(pos.y * 10.0 + time) * 0.2;
+    return 0.02*(sin(pos.x * 10.0 + time/20) * 0.2 + cos(pos.y * 10.0 + time/20) * 0.2);
 }
 
 void main() {

@@ -226,6 +226,7 @@ private:
     struct TextureShaderUniformLocations {
         /// \desc precomputed MVP matrix location
         GLint mvpMatrix;
+        GLint time;
         GLint textureMap;
         GLint lightDirection;
         GLint directionalLightColor;

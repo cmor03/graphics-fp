@@ -124,9 +124,12 @@ void FPEngine::mSetupShaders() {
     _shaderUniformLocations.normalMatrix      = _shaderProgram->getUniformLocation("normalMatrix");
     _shaderUniformLocations.viewVector      = _shaderProgram->getUniformLocation("viewVector");
     _shaderUniformLocations.textureMap      = _shaderProgram->getUniformLocation("textureMap");
+    _shaderUniformLocations.time      = _slenderShaderProgram->getUniformLocation("time");
+
     _shaderAttributeLocations.vPos         = _shaderProgram->getAttributeLocation("vPos");
     _shaderAttributeLocations.normalVec      = _shaderProgram->getAttributeLocation("normalVec");
     _shaderAttributeLocations.inTexCoord      = _shaderProgram->getAttributeLocation("inTexCoord");
+
 
     _shaderProgram->setProgramUniform("textureMap", 0);
 
@@ -406,6 +409,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     // use our lighting shader program
     if(_hitTimer>0){
         _slenderShaderProgram->useProgram();
+        glProgramUniform1f(_shaderProgram->getShaderProgramHandle(),_shaderUniformLocations.time,_hitTimer);
     }
     else {
         _shaderProgram->useProgram();
