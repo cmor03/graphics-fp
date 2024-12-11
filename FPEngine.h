@@ -237,6 +237,7 @@ private:
         GLint pointLightColor;
 
     } _shaderUniformLocations;
+    TextureShaderUniformLocations _slenderShaderUniformLocations;
     /// \desc stores the locations of all of our shader attributes
     struct TextureShaderAttributeLocations {
         /// \desc vertex position location
@@ -247,6 +248,7 @@ private:
         GLint inTexCoord;
 
     } _shaderAttributeLocations;
+    TextureShaderAttributeLocations _slenderShaderAttributeLocations;
 
     GLuint _skyboxVAO, _skyboxVBO;
     CSCI441::ShaderProgram* _skyboxShader;
