@@ -511,7 +511,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     mvpMtx = projMtx * viewMtx * modelMatrix;
     shader->setProgramUniform(uniforms.mvpMatrix, mvpMtx);
 
-    glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::SKY]);
+    glBindTexture(GL_TEXTURE_2D, _texHandles[TEXTURE_ID::BLOOD]);
     if(_isExploding) {
         _particleSystem->draw(viewMtx, projMtx);
     }
