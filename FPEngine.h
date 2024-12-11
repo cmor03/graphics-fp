@@ -7,7 +7,7 @@
 #include <CSCI441/ShaderProgram.hpp>
 #include "CollisionDetector.h"
 #include "ParticleSystem.h"
-#include "Car.h"
+#include "Plane.h"
 
 
 class FPEngine final : public CSCI441::OpenGLEngine {
@@ -281,7 +281,17 @@ private:
 
     glm::mat4 _createBillboardMatrix(const glm::vec3& position, const glm::mat4& viewMatrix) const;
 
-    Car* _staticCar;
+    std::vector<Plane*> _cars;
+
+    struct CarData {
+        Plane* car;
+        glm::vec2 position;
+        bool collected;
+    };
+    std::vector<CarData> _carData;
+
+    float _ghostFreezeTimer = 0.0f;
+    const float GHOST_FREEZE_DURATION = 10.0f;  // 10 seconds
 };
 
 void fp_keyboard_callback(GLFWwindow *window, int key, int scancode, int action, int mods );

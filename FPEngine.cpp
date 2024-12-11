@@ -33,6 +33,8 @@ FPEngine::FPEngine()
     _playerRadius = 0.5f;
     _lastDir = 0;
     _hitTimer = 0;
+    _ghostFreezeTimer = 0.0f;
+    const float GHOST_FREEZE_DURATION = 10.0f;  // 10 seconds
 }
 GLfloat getRand() {
     return (GLfloat)rand() / (GLfloat)RAND_MAX;
@@ -279,15 +281,9 @@ void FPEngine::mSetupScene() {
 
     _setupSkybox();
 
-
     _particleSystem = new ParticleSystem(_shaderProgram->getShaderProgramHandle(),
                                        _shaderUniformLocations.mvpMatrix,
                                        _shaderUniformLocations.materialColor);
-
-    _staticCar = new Car(_shaderProgram->getShaderProgramHandle(),
-                         _shaderUniformLocations.mvpMatrix,
-                         _shaderUniformLocations.normalMatrix,
-                         _shaderUniformLocations.materialColor);
 }
 
 //*************************************************************************************
@@ -331,7 +327,10 @@ void FPEngine::mCleanupScene() {
     glDeleteTextures(1, &_skyTexture);
 
     delete _particleSystem;
-    delete _staticCar;
+    for(CarData& carData : _carData) {
+        delete carData.car;
+    }
+    _carData.clear();
 }
 
 
@@ -414,6 +413,22 @@ void FPEngine::_generateEnvironment() {
                 glm::vec3 color(1,1,1);
                 Ghost ghost = {modelMatrix, color, glm::vec2(i,j),glm::vec2(i,j),glm::vec2(i,j), glm::vec2(i,j), GHOST_SPEED, 1, false};
                 _ghosts.emplace_back(ghost);
+            }
+            else if(world_matrix[i][j]==3){
+                glm::mat4 transToHeight = glm::translate( glm::mat4(1.0), glm::vec3(0, 1.0f, 0) );
+                glm::mat4 modelMatrix = transToSpotMtx * transToHeight;
+                
+                Plane* car = new Plane(_shaderProgram->getShaderProgramHandle(),
+                                  _shaderUniformLocations.mvpMatrix,
+                                  _shaderUniformLocations.normalMatrix,
+                                  _shaderUniformLocations.materialColor);
+                
+                CarData carData = {
+                    car,
+                    glm::vec2(i*3, j*3),
+                    false
+                };
+                _carData.push_back(carData);
             }
         }
     }
@@ -504,9 +519,13 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     modelMatrix = glm::scale(modelMatrix, glm::vec3(1.f));
 
     // Draw static car
-    glm::mat4 carModelMatrix = glm::translate(glm::mat4(1.0f), 
-        glm::vec3(8 * 3.0f, 0.0f, 17 * 3.0f)); // Position where '3' is in world.csv (8,17)
-    _staticCar->drawCar(carModelMatrix, viewMtx, projMtx);
+    for(const CarData& carData : _carData) {
+        if(!carData.collected) {
+            glm::mat4 carModelMatrix = glm::translate(glm::mat4(1.0f), 
+                glm::vec3(carData.position.x, 0.0f, carData.position.y));
+            carData.car->drawPlane(carModelMatrix, viewMtx, projMtx);
+        }
+    }
 }
 
 void FPEngine::_updateScene() {
@@ -571,15 +590,17 @@ void FPEngine::_updateScene() {
     //fprintf(stdout, "player aligned position: (%f,%f)\n", player_aligned_pos.x, player_aligned_pos.y);
     // move ghosts
     for( Ghost& ghost : _ghosts){
+        // Skip ghost movement if frozen
+        if (_ghostFreezeTimer > 0) {
+            continue;  // Skip the movement code while frozen
+        }
+
         if (!ghost.is_moving) {
             ghost.start_pos = ghost.current_pos;
             ghost.target_pos = findBestMove(world_matrix, ghost.current_pos,player_aligned_pos);
-            //fprintf(stdout, "Ghost's new target: (%f, %f)\n",
-                    //ghost.target_pos.x, ghost.target_pos.y);
 
             // Only start moving if target is different
             if (ghost.target_pos != ghost.start_pos) {
-                //fprintf(stdout, "moving ghost\n");
                 ghost.is_moving = true;
                 ghost.progress = 0.0f;
             }
@@ -590,8 +611,6 @@ void FPEngine::_updateScene() {
 
             // Interpolate position
             ghost.current_pos = glm::mix(ghost.start_pos, ghost.target_pos, glm::clamp(ghost.progress, 0.0f, 1.0f));
-            //fprintf(stdout, "Ghost's new position: (%f, %f)\n",
-                    //ghost.current_pos.x, ghost.current_pos.y);
 
             // Check if movement is complete
             if (ghost.progress >= 1.0f) {
@@ -858,6 +877,26 @@ void FPEngine::_updateScene() {
 
     // Update ghosts only if we're not falling or exploding
     if(!_isFalling && !_isExploding) {
+    }
+
+    // Add car collection logic
+    for(CarData& carData : _carData) {
+        if(!carData.collected) {
+            float distance = glm::distance(_pos, carData.position);
+            if(distance < 2.0f) {  // Adjust collision radius as needed
+                carData.collected = true;
+                _ghostFreezeTimer = GHOST_FREEZE_DURATION;  // Start freeze timer
+                fprintf(stdout, "Ghosts frozen for 10 seconds!\n");
+            }
+        }
+    }
+
+    if (_ghostFreezeTimer > 0) {
+        _ghostFreezeTimer -= 0.016f;  // Decrease timer (assuming 60 FPS)
+        if (_ghostFreezeTimer <= 0) {
+            _ghostFreezeTimer = 0;
+            fprintf(stdout, "Ghosts unfrozen!\n");
+        }
     }
 }
 
