@@ -430,7 +430,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
         shader = _slenderShaderProgram;
         uniforms = _slenderShaderUniformLocations;
         attributes = _slenderShaderAttributeLocations;
-        glProgramUniform1f(_slenderShaderProgram->getShaderProgramHandle(),_shaderUniformLocations.time,_hitTimer);
+        glProgramUniform1i(_slenderShaderProgram->getShaderProgramHandle(),_shaderUniformLocations.time,_hitTimer);
     }
     else {
         shader = _shaderProgram;
