@@ -17,27 +17,35 @@ layout(location = 2) out vec3 fragNormal;
 layout(location = 3) out vec3 color;
 
 // Wacky Wave Function
-float wave(vec3 pos, float time) {
-    return 0.02*(sin(pos.x * 10.0 + time/20) * 0.2 + cos(pos.y * 10.0 + time/20) * 0.2);
+vec3 bezier(float time) {
+    float T = fract(time / 15);
+    vec3 P0 = vec3(-200, -200, 100);
+    vec3 P1 = vec3(25, -379, 0);
+    vec3 P2 = vec3(116, 330, 500);
+    vec3 P3 = vec3(200, -200, -200);
+    vec3 bezierPoint = (pow((1 - T),3)) * P0
+        + (3*T*pow((1 - T),2)) * P1
+        + (3*pow(T,2)*(1 - T)) * P2
+        + (pow(T,3)) * P3;
+    return bezierPoint;
 }
 
 void main() {
 
-    // Add a wavy distortion to the vertex position
-    vec3 wavyPos = vPos;
-    wavyPos.z += wave(vPos, time);
-    wavyPos.xy += vec2(sin(vPos.y * 10.0 + time), cos(vPos.x * 10.0 + time)) * 0.1;
-
+    // Add a bezier distortion to the vertex position
+    vec3 bezierPos = vPos;
+    vec3 bezierDistortion = normalize(bezier(time)) * 0.1;
+    bezierPos += bezierDistortion;
     // Assign the final position to the output
-    gl_Position = mvpMatrix * vec4(wavyPos, 1.0);
+    gl_Position = mvpMatrix * vec4(bezierPos, 1.0);
 
     // Output distorted attributes
-    fragPos = wavyPos;
+    fragPos = bezierPos;
     fragNormal = normalize(normalMatrix * normalVec);
 
     // Color changes dynamically based on position and time
-    color = materialColor * abs(sin(wavyPos.x * 5.0 + time)) * vec3(0.5, 1.0, 1.5);
+    color = materialColor;
 
-    // Add some wavy distortion to texture coordinates for fun
-    texCoord = inTexCoord + vec2(sin(time + inTexCoord.y * 10.0), cos(time + inTexCoord.x * 10.0)) * 0.05;
+    // Add some bezier distortion to texture coordinates
+    texCoord = inTexCoord + vec2(bezierDistortion);
 }
