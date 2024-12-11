@@ -28,11 +28,6 @@ void main() {
     wavyPos.z += wave(vPos, time);
     wavyPos.xy += vec2(sin(vPos.y * 10.0 + time), cos(vPos.x * 10.0 + time)) * 0.1;
 
-    // Spin the object around its origin
-    float angle = time * 0.5; // Adjust rotation speed
-    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-    wavyPos.xy = rotation * wavyPos.xy;
-
     // Assign the final position to the output
     gl_Position = mvpMatrix * vec4(wavyPos, 1.0);
 
