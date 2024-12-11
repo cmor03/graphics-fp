@@ -445,7 +445,7 @@ void FPEngine::_renderScene(glm::mat4 viewMtx, glm::mat4 projMtx) const {
     TextureShaderAttributeLocations attributes;
 
     //set shader program, uniforms and attributes based on whether we are using the glitched or normal shader
-    if(_hitTimer>0){
+    if(_hitTimer>0 && !_isExploding){
         shader = _slenderShaderProgram;
         uniforms = _slenderShaderUniformLocations;
         attributes = _slenderShaderAttributeLocations;

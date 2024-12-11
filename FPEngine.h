@@ -103,7 +103,7 @@ private:
     GLfloat WORLD_SIZE_X = 15.0f;
     GLfloat WORLD_SIZE_Y = 15.0f;
 
-    int NUM_LIVES = 3000;
+    int NUM_LIVES = 3;
     float GHOST_SPEED = 0.015;
 
     std::vector<std::vector<int>> world_matrix;
@@ -270,7 +270,7 @@ private:
     float _fallTime = 0.0f;
     const float MAX_FALL_TIME = 3.0f;
     const float FALL_SPEED = 15.0f;
-    glm::vec3 _spawnPosition = glm::vec3(0.0f, 0.5f, 0.0f);
+    glm::vec3 _spawnPosition = glm::vec3(3.0f, 0.5f, 3.0f);
     float _currentHeight = 0.5f;
 
 
