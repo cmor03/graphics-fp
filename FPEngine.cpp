@@ -566,7 +566,7 @@ void FPEngine::_updateScene() {
             _pos = glm::vec2(_spawnPosition.x, _spawnPosition.z);
             _direction = 0.0f;
             _currentHeight = _spawnPosition.y;
-            NUM_LIVES = 3;
+            NUM_LIVES = 5;
             generate_points();
         }
         return;
@@ -660,12 +660,15 @@ void FPEngine::_updateScene() {
         GHOST_SPEED += 0.005;
     }
 
+
+    float speed = 0.1f;
+
     // Rest of update code (movement, ghosts, etc.)
     if(_keys[GLFW_KEY_W]) {
         // Calculate new position
         glm::vec2 newPos = _pos;
-        newPos.x += 0.15f * glm::sin(_direction);
-        newPos.y += 0.15f * glm::cos(_direction);
+        newPos.x += speed * glm::sin(_direction);
+        newPos.y += speed * glm::cos(_direction);
         
         // Check for collisions
         if(!_checkCollisions(newPos)) {
@@ -691,11 +694,11 @@ void FPEngine::_updateScene() {
             }
 
             if(x && (_lastDir == 0 || _lastDir == 1)){
-                _pos.x += 0.15f * glm::sin(_direction);
+                _pos.x += speed * glm::sin(_direction);
                 _lastDir = 1;
             }
             if(z && (_lastDir == 0 || _lastDir == 2)){
-                _pos.y += 0.15f * glm::cos(_direction);
+                _pos.y += speed * glm::cos(_direction);
                 _lastDir = 2;
             }
             if(_checkCollisions(_pos)){
@@ -710,8 +713,8 @@ void FPEngine::_updateScene() {
     }
     if(_keys[GLFW_KEY_S]){
         glm::vec2 newPos = _pos;
-        newPos.x -= 0.15f * glm::sin(_direction);
-        newPos.y -= 0.15f * glm::cos(_direction);
+        newPos.x -= speed * glm::sin(_direction);
+        newPos.y -= speed * glm::cos(_direction);
         
         if(!_checkCollisions(newPos)) {
             // No collision, update position
@@ -736,11 +739,11 @@ void FPEngine::_updateScene() {
             }
 
             if(x && (_lastDir == 0 || _lastDir == 1)){
-                _pos.x -= 0.15f * glm::sin(_direction);
+                _pos.x -= speed * glm::sin(_direction);
                 _lastDir = 1;
             }
             if(z && (_lastDir == 0 || _lastDir == 2)){
-                _pos.y -= 0.15f * glm::cos(_direction);
+                _pos.y -= speed * glm::cos(_direction);
                 _lastDir = 2;
             }
             if(_checkCollisions(_pos)){
@@ -756,8 +759,8 @@ void FPEngine::_updateScene() {
     if(_keys[GLFW_KEY_A]){
         // Calculate new position
         glm::vec2 newPos = _pos;
-        newPos.x += 0.15f * glm::sin(_direction + M_PI/2);
-        newPos.y += 0.15f * glm::cos(_direction + M_PI/2);
+        newPos.x += speed * glm::sin(_direction + M_PI/2);
+        newPos.y += speed * glm::cos(_direction + M_PI/2);
         
         // Check for collisions
         if(!_checkCollisions(newPos)) {
@@ -783,11 +786,11 @@ void FPEngine::_updateScene() {
             }
 
             if(x && (_lastDir == 0 || _lastDir == 1)){
-                _pos.x += 0.15f * glm::sin(_direction + M_PI/2);
+                _pos.x += speed * glm::sin(_direction + M_PI/2);
                 _lastDir = 1;
             }
             if(z && (_lastDir == 0 || _lastDir == 2)){
-                _pos.y += 0.15f * glm::cos(_direction + M_PI/2);
+                _pos.y += speed * glm::cos(_direction + M_PI/2);
                 _lastDir = 2;
             }
             if(_checkCollisions(_pos)){
@@ -803,8 +806,8 @@ void FPEngine::_updateScene() {
     if(_keys[GLFW_KEY_D]){
         // Calculate new position
         glm::vec2 newPos = _pos;
-        newPos.x += 0.15f * glm::sin(_direction - M_PI/2);
-        newPos.y += 0.15f * glm::cos(_direction - M_PI/2);
+        newPos.x += speed * glm::sin(_direction - M_PI/2);
+        newPos.y += speed * glm::cos(_direction - M_PI/2);
         
         // Check for collisions
         if(!_checkCollisions(newPos)) {
@@ -830,11 +833,11 @@ void FPEngine::_updateScene() {
             }
 
             if(x && (_lastDir == 0 || _lastDir == 1)){
-                _pos.x += 0.15f * glm::sin(_direction - M_PI/2);
+                _pos.x += speed * glm::sin(_direction - M_PI/2);
                 _lastDir = 1;
             }
             if(z && (_lastDir == 0 || _lastDir == 2)){
-                _pos.y += 0.15f * glm::cos(_direction - M_PI/2);
+                _pos.y += speed * glm::cos(_direction - M_PI/2);
                 _lastDir = 2;
             }
             if(_checkCollisions(_pos)){
